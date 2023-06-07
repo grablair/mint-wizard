@@ -1,5 +1,3 @@
-#!/usr/local/bin/python3
-
 import re
 import json
 import sys
@@ -50,7 +48,7 @@ def run_auto_processor(args):
 	splitwise.process_splitwise_expenses()
 
 	# Add any recurring transactions to Mint
-	mint.process_recurring_transaction_completion()
+	mint.process_recurring_transactions()
 
 	mint.close()
 	logging.info("Mint auto-processing complete!")
