@@ -68,7 +68,7 @@ if __name__ == "__main__":
 	auto_process_parser.add_argument("-names", "--splitwise-user-id-to-name-json", help="The path of the JSON file used to override names fetched from Splitwise")
 	auto_process_parser.add_argument("-mintid", "--mint-custom-user-identifier", help="Turns on user-specific Splitwise flags. See README")
 	auto_process_parser.add_argument("-config", help="Path to config file with recurring transactions and recategorizations", default="./config.json")
-	auto_process_parser.add_argument("--headless", help="Run the Selenium driver in headless mode", type=bool, default=True)
+	auto_process_parser.add_argument("--headless", help="Run the Selenium driver in headless mode", action=argparse.BooleanOptionalAction, default=True)
 	auto_process_parser.set_defaults(func=run_auto_processor)
 
 	recurring_transactions_subparser = subparsers.add_parser("recurring-txns", help="Configure recurring Mint transactions")

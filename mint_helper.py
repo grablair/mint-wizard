@@ -34,11 +34,11 @@ class MintHelper:
 			options.add_argument("--headless")
 
 		options.add_argument("--no-sandbox")
-		options.add_argument("start-maximized")
+		options.add_argument("window-size=1500x1700")
 		options.add_argument("disable-infobars")
 		options.add_argument("--disable-extensions")
 
-		self.driver = webdriver.Chrome(options)
+		self.driver = webdriver.Chrome(options=options)
 		
 		# Load the initial page
 		self.load_transactions_page()
@@ -94,8 +94,12 @@ class MintHelper:
 		self.wait_for_transaction_table()
 		return self.get_elems_by_description("")
 
+	def hide_account_status_bar(self):
+		self.driver.execute_script("let result = document.querySelector('div[class*=\"AccountStatusBar\"]'); if (result != null) result.style.display = 'none';")
+
 	def wait_for_transaction_table(self, hide_autoprocessed=True, timeout=60):
 		self.get_elem_by_css('[data-automation-id="TRANSACTIONS_LIST_TABLE"], [class*="NoTransactionsFound"]', timeout)
+		self.hide_account_status_bar()
 
 		if hide_autoprocessed:
 			# filter out transactions that already have AUTOPROCESSED tag
