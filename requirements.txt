@@ -1,0 +1,5 @@
+pytimeparse>=1.1.8
+SQLAlchemy>=2.0.15 
+splitwise>=2.5.0
+pyotp>=2.8.0
+selenium>=4.9.1
