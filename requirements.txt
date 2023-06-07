@@ -1,4 +1,5 @@
-pytimeparse>=1.1.8
+python-dateutil==2.8.2
+pytimeparse2==1.7.1
 SQLAlchemy>=2.0.15 
 splitwise>=2.5.0
 pyotp>=2.8.0

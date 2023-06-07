@@ -6,7 +6,7 @@ import logging
 import time
 
 from datetime import datetime, timedelta
-from pytimeparse.timeparse import timeparse
+from pytimeparse2 import parse as timeparse
 
 from splitwise_helper import SplitwiseHelper
 from mint_helper import MintHelper
@@ -78,7 +78,7 @@ if __name__ == "__main__":
 	add_recurring_txn_parser.add_argument("-d", "--description", help="Description of the transaction", required=True)
 	add_recurring_txn_parser.add_argument("-a", "--amount", help="Amount of the transaction. Negative numbers are charges, positive numbers are credits", required=True)
 	add_recurring_txn_parser.add_argument("-c", "--category", help="Mint category for the transaction", required=True)
-	add_recurring_txn_parser.add_argument("-f", "--frequency", help="Frequency of recurrence. Ex: 7d", required=True, type=(lambda frequency: timedelta(timeparse(frequency))))
+	add_recurring_txn_parser.add_argument("-f", "--frequency", help="Frequency of recurrence. Ex: 7d", required=True, type=(lambda frequency: timeparse(frequency, as_timedelta=True)))
 	add_recurring_txn_parser.add_argument("-fd", "--first-occurrence", help="String representation of the first occurrence, in the following format: YYYY-MM-DD HH:MM", required=True, type=lambda s: datetime.strptime(s, '%Y-%m-%d %H:%M'))
 	add_recurring_txn_parser.add_argument("-sd", "--stop-after", help="Optional string representation of the ending datetime for recurrence, in the following format: YYYY-MM-DD HH:MM", type=lambda s: datetime.strptime(s, '%Y-%m-%d %H:%M'))
 	add_recurring_txn_parser.set_defaults(func=add_recurring_txn)

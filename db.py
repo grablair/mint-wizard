@@ -4,15 +4,37 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, select, insert
-from sqlalchemy.types import Interval
+from sqlalchemy.types import TypeDecorator, TEXT
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime, timedelta
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from typing import Optional
 
 from secrets import token_hex
+from types import SimpleNamespace
+
+import json
 import logging
 
 Base = declarative_base()
+
+class RelativeDeltaType(TypeDecorator):
+
+	impl = TEXT
+
+	cache_ok = True
+
+	def process_bind_param(self, value, dialect):
+		if value is not None:
+			delta_dict = {k:v for k,v in value.__dict__.items() if not k.startswith("_")}
+			value = json.dumps(delta_dict)
+
+		return value
+
+	def process_result_value(self, value, dialect):
+		if value is not None:
+			value = json.loads(value, object_hook=lambda d: relativedelta(**d))
+		return value
 
 class RecurringTransaction(Base):
 	__tablename__ = 'recurring_transaction'
@@ -21,7 +43,7 @@ class RecurringTransaction(Base):
 	description: Mapped[str]
 	amount: Mapped[str]
 	category: Mapped[str]
-	frequency: Mapped[timedelta]
+	frequency: Mapped[str] = mapped_column(RelativeDeltaType)
 	dedupe_string: Mapped[str]
 	next_occurrence: Mapped[datetime]
 	stop_after: Mapped[Optional[datetime]]
