@@ -12,22 +12,24 @@ from splitwise_helper import SplitwiseHelper
 from mint_helper import MintHelper
 from db import Db
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+logger = logging.getLogger("Main")
 
 def list_recurring_txns(args):
-	logging.info("Listing recurring transactions")
+	logger.info("Listing recurring transactions")
 	[print(txn) for txn in args.db.get_all_recurring_transactions()]
 
 def add_recurring_txn(args):
-	logging.info("Adding recurring transaction")
+	logger.info("Adding recurring transaction")
 	args.db.create_recurring_transaction(args.description, args.amount, args.category, args.frequency, args.first_occurrence, args.stop_after)
 
 def remove_recurring_txn(args):
-	logging.info("Removing recurring transaction")
+	logger.info("Removing recurring transaction")
 	args.db.remove_recurring_transaction(args.id)
 
 def run_auto_processor(args):
-	logging.info("Starting run of the Mint Auto-Processor")
+	logger.info("Starting run of the Mint Auto-Processor")
 
 	if args.mint_custom_user_identifier and not re.match(r'^[A-Z]+$', args.mint_custom_user_identifier):
 		print("--mint-custom-user-identifier must be solely positive letters from A-Z. It was: {}".format(args.mint_custom_user_identifier))
@@ -42,9 +44,9 @@ def run_auto_processor(args):
 		splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier)
 
 		# Process Splitwise expenses and add transactions to Mint
-		splitwise.process_splitwise_expenses()
+		splitwise.process_splitwise_expenses(args.splitwise_days_to_look_back)
 	else:
-		logging.info("Skipping Splitwise processing, as instructed")
+		logger.info("Skipping Splitwise processing, as instructed")
 
 	# Recategorize transactions in Mint
 	# TODO: Move to database with multiple patterns (name, price, etc)
@@ -56,7 +58,7 @@ def run_auto_processor(args):
 		mint.process_recurring_transactions()
 
 	mint.close()
-	logging.info("Mint auto-processing complete!")
+	logger.info("Mint auto-processing complete!")
 
 if __name__ == "__main__":
 
@@ -71,6 +73,7 @@ if __name__ == "__main__":
 	auto_process_parser.add_argument("-names", "--splitwise-user-id-to-name-json", help="The path of the JSON file used to override names fetched from Splitwise")
 	auto_process_parser.add_argument("-mintid", "--mint-custom-user-identifier", help="Turns on user-specific Splitwise flags. See README")
 	auto_process_parser.add_argument("-config", help="Path to config file with recurring transactions and recategorizations", default="./config.json")
+	auto_process_parser.add_argument("-days", "--splitwise-days-to-look-back", help="The number of days to look back when determining expenses to process (script looks at updated dates, not dates of the expenses)", type=int, default=7)
 	auto_process_parser.add_argument("--recurring-txns", help="Process recurring transactions", action=argparse.BooleanOptionalAction, default=True)
 	auto_process_parser.add_argument("--recategorize-txns", help="Perform transaction recategorization", action=argparse.BooleanOptionalAction, default=True)
 	auto_process_parser.add_argument("--splitwise", help="Process splitwise transactions", action=argparse.BooleanOptionalAction, default=True)

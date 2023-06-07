@@ -8,6 +8,8 @@ import json
 
 import util
 
+logger = logging.getLogger("SplitwiseHelper")
+
 class SplitwiseHelper:
 	def __init__(self, creds, mint, shorthand_json_path, user_id_to_name_json_path, mint_custom_user_identifier):
 		self.mint = mint
@@ -34,9 +36,12 @@ class SplitwiseHelper:
 			if friend.getId() == user_id:
 				return "{} {}".format(friend.getFirstName(), friend.getLastName()).strip()
 
-	def process_splitwise_expenses(self):
-		expenses = self.splitwise.getExpenses(updated_after=(datetime.now() - timedelta(days=7)), updated_before=datetime.now(), limit=200)
+	def process_splitwise_expenses(self, days_to_look_back):
+		logger.info("Starting to process Splitwise expenses, looking back %s days" % days_to_look_back)
 
+		expenses = self.splitwise.getExpenses(updated_after=(datetime.now() - timedelta(days=days_to_look_back)), updated_before=datetime.now(), limit=200)
+
+		logger.info("%s expenses to process" % len(expenses))
 		for expense in expenses:
 			charge_modifier_used = False
 
@@ -49,7 +54,7 @@ class SplitwiseHelper:
 			# first, check for shorthands
 			shorthand_match = re.findall(r'\bM[A-Z]*:[A-Z]+\b', description)
 			if shorthand_match and len(shorthand_match) > 1:
-				logging.error("Found more than one shorthand match for Mint in a Splitwise Transaction. Skipping... Description: {}; Matches: {}".format(description, shorthand_match))
+				logger.error("Found more than one shorthand match for Mint in a Splitwise Transaction. Skipping... Description: {}; Matches: {}".format(description, shorthand_match))
 				continue
 
 			if shorthand_match and shorthand_match[0].split(":")[1] in self.shorthands_to_categories:
@@ -68,7 +73,7 @@ class SplitwiseHelper:
 							# want to ensure that only the charge component has been added, since
 							# the main component already has been added. 
 							charge_modifier_used = True
-							logging.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
+							logger.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
 							self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
 			else:
 				# otherwise look for a JSON object
@@ -98,7 +103,7 @@ class SplitwiseHelper:
 							case 'C':
 								if not global_charge_modifier_used:
 									charge_modifier_used = True
-									logging.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
+									logger.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
 									self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
 
 			amount_owed_to_me = Decimal(my_expense_user.getPaidShare()) - Decimal(my_expense_user.getOwedShare())
@@ -114,7 +119,7 @@ class SplitwiseHelper:
 					notes_array.append("Me -> {}: {}".format(self.splitwise_user_id_to_name(debt.getToUser()), amount))
 
 
-			logging.info("Processing Splitwise Transaction. Description: {}; Category: {}; Amount: {}; {}Debts:{}".format(
+			logger.info("Processing Splitwise Transaction. Description: {}; Category: {}; Amount: {}; {}Debts:{}".format(
 				stripped_description, 
 				category, 
 				amount_owed_to_me, 

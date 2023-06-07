@@ -20,8 +20,10 @@ import argparse
 
 import logging
 
+logger = logging.getLogger("MintHelper")
+
 # TODO: can use better filters
-# https://mint.intuit.com/transactions?categoryIds=66949270_12&startDate=2023-06-01&endDate=2023-06-30&exclHidden=T
+# e.g. https://mint.intuit.com/transactions?categoryIds=66949270_12&startDate=2023-06-01&endDate=2023-06-30&exclHidden=T
 
 class MintHelper:
 	def __init__(self, creds, db, run_headless):
@@ -200,10 +202,10 @@ class MintHelper:
 		# TODO: Add local dedupe caching to avoid unnecessary searches
 		self.search_for_transactions(dedupe)
 		if self.get_elems_by_description(dedupe):
-			logging.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
+			logger.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
 			return
 
-		logging.info("Adding transaction for %s with price %s and category %s" % (desc, price, category))
+		logger.info("Adding transaction for %s with price %s and category %s" % (desc, price, category))
 
 		self.clear_search_filters()
 
@@ -228,36 +230,39 @@ class MintHelper:
 
 		self.get_elem_by_automation_id('SAVE').click()
 
-		logging.info("Added transaction for %s with price %s and category %s" % (desc, price, category))
+		logger.info("Added transaction for %s with price %s and category %s" % (desc, price, category))
 
 		self.wait_for_edit_txn_to_close()
 
 	def recategorize_target_transactions(self, pattern_configs):
-		logging.info("Starting to recategorize target transactions by pattern")
+		logger.info("Starting to recategorize target transactions by pattern")
 
 		for pattern, category, new_description in pattern_configs:
-			logging.info("Processing pattern %s; recategorizing matches to %s with new description %s" % (pattern, category, new_description))
+			logger.info("Processing pattern %s; recategorizing matches to %s with new description %s" % (pattern, category, new_description))
 
 			txns = self.get_all_transactions()
 			txns.reverse()
 
+			logger.info("%s matches found for pattern" % len(txns))
 			for txn in txns:
 				statement_name = txn.get_attribute("title")[len("Statement Name: "):]
 				if "AUTOCATEGORIZED" in statement_name:
-					logging.info("Skipping matching transaction %s as it's already auto-categorized" % statement_name.replace(" | AUTOCATEGORIZED", "").strip())
+					logger.info("Skipping matching transaction %s as it's already auto-categorized" % statement_name.replace(" | AUTOCATEGORIZED", "").strip())
 					continue
 
 				if re.match(patterns_to_hide, statement_name):
-					logging.info("Recategorizing matching transaction %s to %s, as it matches pattern %s" % (statement_name, category, pattern))
+					logger.info("Recategorizing matching transaction %s to %s, as it matches pattern %s" % (statement_name, category, pattern))
 					self.recategorize_txn(txn, category, description="%s | AUTOCATEGORIZED" % new_description)
+					logger.info("Transaction recategorized")
 
 	def process_recurring_transactions(self):
-		logging.info("Processing recurring transactions")
-
-		for txn in self.db.get_past_due_recurring_transactions():
-			logging.info("Processing %s" % txn)
+		logger.info("Processing recurring transactions")
+		txns = self.db.get_past_due_recurring_transactions()
+		logger.info("%s recurring transactions to process" % len(txns))
+		for txn in txns:
+			logger.info("Processing %s" % txn)
 			# sanity check
 			if txn.next_occurrence < datetime.now():
-				logging.info("Creating transaction for %s" % txn)
+				logger.info("Creating transaction for %s" % txn)
 				self.add_transaction(txn.description, txn.amount, txn.category, txn.next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, txn.next_occurrence.isoformat()))
 				self.db.process_recurring_transaction_completion(txn.id)

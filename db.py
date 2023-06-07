@@ -16,6 +16,8 @@ from types import SimpleNamespace
 import json
 import logging
 
+logger = logging.getLogger("Db")
+
 Base = declarative_base()
 
 class RelativeDeltaType(TypeDecorator):
@@ -66,15 +68,15 @@ class Db:
 		with Session(self.engine) as session:
 			session.add(txn)
 			session.commit()
-			logging.info("Created new recurring transaction: %s" % txn)
+			logger.info("Created new recurring transaction: %s" % txn)
 
 	def remove_recurring_transaction(self, id):
 		with Session(self.engine) as session:
 			txn = session.get(RecurringTransaction, id)
-			logging.info("Removing recurring transaction: %s" % txn)
+			logger.info("Removing recurring transaction: %s" % txn)
 			session.delete(txn)
 			session.commit()
-			logging.info("Removed recurring transaction")
+			logger.info("Removed recurring transaction")
 
 	def get_past_due_recurring_transactions(self):
 		self.clean_up_expired_recurring_transactions()
@@ -91,7 +93,7 @@ class Db:
 		)
 		with Session(self.engine) as session:
 			for txn in session.execute(stmt):
-				logging.info("Cleaning up expired recurring transaction %s" % txn)
+				logger.info("Cleaning up expired recurring transaction %s" % txn)
 				session.delete(txn)
 			session.commit()
 
@@ -99,6 +101,6 @@ class Db:
 		with Session(self.engine) as session:
 			txn = session.get(RecurringTransaction, id)
 			new_occurrence = txn.next_occurrence + txn.frequency
-			logging.info("Bumping next occurrence for transaction \"%s\" from %s to %s" % (txn.description, txn.next_occurrence.isoformat(), new_occurrence.isoformat()))
+			logger.info("Bumping next occurrence for transaction \"%s\" from %s to %s" % (txn.description, txn.next_occurrence.isoformat(), new_occurrence.isoformat()))
 			txn.next_occurrence = new_occurrence
 			session.commit()
