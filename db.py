@@ -1,0 +1,80 @@
+import sqlite3
+
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, select, insert
+from sqlalchemy.types import Interval
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime, timedelta
+from typing import Optional
+
+from secrets import token_hex
+import logging
+
+Base = declarative_base()
+
+class RecurringTransaction(Base):
+	__tablename__ = 'recurring_transaction'
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	description: Mapped[str]
+	amount: Mapped[str]
+	category: Mapped[str]
+	frequency: Mapped[timedelta]
+	dedupe_string: Mapped[str]
+	next_occurrence: Mapped[datetime]
+	stop_after: Mapped[Optional[datetime]]
+
+	def __repr__(self) -> str:
+		return f"RecurringTransaction(id={self.id!r}, description={self.description!r}, amount={self.amount!r}, category={self.category!r}, frequency={self.frequency!r}, dedupe_string={self.dedupe_string!r}, next_occurrence={self.next_occurrence!r}, stop_after={self.stop_after!r})"
+
+class Db:
+	def __init__(self, db_path):
+		self.engine = create_engine("sqlite:///%s" % db_path)
+		Base.metadata.create_all(self.engine)
+
+	def get_all_recurring_transactions(self):
+		stmt = select(RecurringTransaction)
+		with Session(self.engine) as session:
+			return session.execute(stmt).all()
+
+	def create_recurring_transaction(self, description, amount_decimal, category, frequency, first_occurrence, stop_after):
+		txn = RecurringTransaction(description=description, amount=str(amount_decimal), category=category, frequency=frequency, dedupe_string=token_hex(8), next_occurrence=first_occurrence, stop_after=stop_after)
+		with Session(self.engine) as session:
+			session.add(txn)
+			session.commit()
+			logging.info("Created new recurring transaction: %s" % txn)
+
+	def remove_recurring_transaction(self, id):
+		with Session(self.engine) as session:
+			txn = session.get(RecurringTransaction, id)
+			logging.info("Removing recurring transaction: %s" % txn)
+			session.delete(txn)
+			session.commit()
+			logging.info("Removed recurring transaction")
+
+	def get_past_due_recurring_transactions(self):
+		self.clean_up_expired_recurring_transactions()
+
+		stmt = select(RecurringTransaction).where(RecurringTransaction.next_occurrence < datetime.now())
+		with Session(self.engine) as session:
+			return session.execute(stmt).all()
+
+	def clean_up_expired_recurring_transactions(self):
+		stmt = (
+			select(RecurringTransaction)
+			.where(RecurringTransaction.stop_after != None)
+			.where(RecurringTransaction.stop_after < datetime.now())
+		)
+		with Session(self.engine) as session:
+			for txn in session.execute(stmt):
+				logging.info("Cleaning up expired recurring transaction %s" % txn)
+				session.delete(txn)
+			session.commit()
+
+	def process_recurring_transaction_completion(self, id):
+		with Session(self.engine) as session:
+			txn = session.get(RecurringTransaction, id)
+			txn.next_occurrence = txn.next_occurrence + txn.frequency
+			session.commit()
