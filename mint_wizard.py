@@ -38,7 +38,7 @@ def run_auto_processor(args):
 	creds = json.load(open(args.credentials_path))
 	config = json.load(open(args.config))
 
-	mint = MintHelper(creds, args.chromedriver_path, args.db, args.headless)
+	mint = MintHelper(creds, args.db, args.headless)
 	splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier)
 
 	# Recategorize transactions in Mint
@@ -64,7 +64,6 @@ if __name__ == "__main__":
 
 	auto_process_parser = subparsers.add_parser("auto-process", help="Run the auto-processor")
 	auto_process_parser.add_argument("-creds", "--credentials-path", help="The path to the file containing your credentials", required=True)
-	auto_process_parser.add_argument("-chrome", "--chromedriver-path", help="The path to the ChromeDriver for Selenium to use", required=True)
 	auto_process_parser.add_argument("-short", "--shorthand-json-path", help="The path to the file containing the mapping of shorthand identifiers to mint categories", default="./shorthands.json")
 	auto_process_parser.add_argument("-names", "--splitwise-user-id-to-name-json", help="The path of the JSON file used to override names fetched from Splitwise")
 	auto_process_parser.add_argument("-mintid", "--mint-custom-user-identifier", help="Turns on user-specific Splitwise flags. See README")

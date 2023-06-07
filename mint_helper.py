@@ -24,7 +24,7 @@ import logging
 # https://mint.intuit.com/transactions?categoryIds=66949270_12&startDate=2023-06-01&endDate=2023-06-30&exclHidden=T
 
 class MintHelper:
-	def __init__(self, creds, chromedriver_path, db, run_headless):
+	def __init__(self, creds, db, run_headless):
 		self.creds = creds
 		self.db = db
 
@@ -38,7 +38,7 @@ class MintHelper:
 		options.add_argument("disable-infobars")
 		options.add_argument("--disable-extensions")
 
-		self.driver = webdriver.Chrome(chromedriver_path, options=options)
+		self.driver = webdriver.Chrome(options)
 		
 		# Load the initial page
 		self.load_transactions_page()
