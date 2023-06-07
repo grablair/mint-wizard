@@ -45,7 +45,7 @@ def run_auto_processor(args):
 		mint.recategorize_target_transactions(config["patterns_to_recategorize"])
 	
 	# Process Splitwise expenses and add transactions to Mint
-	splitwise.process_splitwise_expenses()
+	#splitwise.process_splitwise_expenses()
 
 	# Add any recurring transactions to Mint
 	mint.process_recurring_transactions()

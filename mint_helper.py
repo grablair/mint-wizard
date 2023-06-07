@@ -228,6 +228,8 @@ class MintHelper:
 
 		self.get_elem_by_automation_id('SAVE').click()
 
+		logging.info("Added transaction for %s with price %s and category %s" % (desc, price, category))
+
 		self.wait_for_edit_txn_to_close()
 
 	def recategorize_target_transactions(self, pattern_configs):
@@ -253,6 +255,7 @@ class MintHelper:
 		logging.info("Processing recurring transactions")
 
 		for txn in self.db.get_past_due_recurring_transactions():
+			logging.info("Processing %s" % txn)
 			# sanity check
 			if txn.next_occurrence < datetime.now():
 				logging.info("Creating transaction for %s" % txn)

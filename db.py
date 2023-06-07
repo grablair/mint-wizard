@@ -59,7 +59,7 @@ class Db:
 	def get_all_recurring_transactions(self):
 		stmt = select(RecurringTransaction)
 		with Session(self.engine) as session:
-			return session.execute(stmt).all()
+			return session.scalars(stmt).all()
 
 	def create_recurring_transaction(self, description, amount_decimal, category, frequency, first_occurrence, stop_after):
 		txn = RecurringTransaction(description=description, amount=str(amount_decimal), category=category, frequency=frequency, dedupe_string=token_hex(8), next_occurrence=first_occurrence, stop_after=stop_after)
@@ -81,7 +81,7 @@ class Db:
 
 		stmt = select(RecurringTransaction).where(RecurringTransaction.next_occurrence < datetime.now())
 		with Session(self.engine) as session:
-			return session.execute(stmt).all()
+			return session.scalars(stmt).all()
 
 	def clean_up_expired_recurring_transactions(self):
 		stmt = (
@@ -98,5 +98,7 @@ class Db:
 	def process_recurring_transaction_completion(self, id):
 		with Session(self.engine) as session:
 			txn = session.get(RecurringTransaction, id)
-			txn.next_occurrence = txn.next_occurrence + txn.frequency
+			new_occurrence = txn.next_occurrence + txn.frequency
+			logging.info("Bumping next occurrence for transaction \"%s\" from %s to %s" % (txn.description, txn.next_occurrence.isoformat(), new_occurrence.isoformat()))
+			txn.next_occurrence = new_occurrence
 			session.commit()
