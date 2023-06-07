@@ -37,18 +37,23 @@ def run_auto_processor(args):
 	config = json.load(open(args.config))
 
 	mint = MintHelper(creds, args.db, args.headless)
-	splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier)
+
+	if args.splitwise:
+		splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier)
+
+		# Process Splitwise expenses and add transactions to Mint
+		splitwise.process_splitwise_expenses()
+	else:
+		logging.info("Skipping Splitwise processing, as instructed")
 
 	# Recategorize transactions in Mint
 	# TODO: Move to database with multiple patterns (name, price, etc)
-	if "patterns_to_recategorize" in config:
+	if args.recategorize_txns and "patterns_to_recategorize" in config:
 		mint.recategorize_target_transactions(config["patterns_to_recategorize"])
-	
-	# Process Splitwise expenses and add transactions to Mint
-	#splitwise.process_splitwise_expenses()
 
-	# Add any recurring transactions to Mint
-	mint.process_recurring_transactions()
+	if args.recurring_txns:
+		# Add any recurring transactions to Mint
+		mint.process_recurring_transactions()
 
 	mint.close()
 	logging.info("Mint auto-processing complete!")
@@ -66,6 +71,9 @@ if __name__ == "__main__":
 	auto_process_parser.add_argument("-names", "--splitwise-user-id-to-name-json", help="The path of the JSON file used to override names fetched from Splitwise")
 	auto_process_parser.add_argument("-mintid", "--mint-custom-user-identifier", help="Turns on user-specific Splitwise flags. See README")
 	auto_process_parser.add_argument("-config", help="Path to config file with recurring transactions and recategorizations", default="./config.json")
+	auto_process_parser.add_argument("--recurring-txns", help="Process recurring transactions", action=argparse.BooleanOptionalAction, default=True)
+	auto_process_parser.add_argument("--recategorize-txns", help="Perform transaction recategorization", action=argparse.BooleanOptionalAction, default=True)
+	auto_process_parser.add_argument("--splitwise", help="Process splitwise transactions", action=argparse.BooleanOptionalAction, default=True)
 	auto_process_parser.add_argument("--headless", help="Run the Selenium driver in headless mode", action=argparse.BooleanOptionalAction, default=True)
 	auto_process_parser.set_defaults(func=run_auto_processor)
 
