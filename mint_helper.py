@@ -5,7 +5,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver import ChromeOptions
 
 from decimal import Decimal
 
@@ -28,7 +28,7 @@ class MintHelper:
 		self.creds = creds
 		self.db = db
 
-		options = Options()
+		options = ChromeOptions()
 
 		if run_headless:
 			options.add_argument("--headless")
@@ -38,7 +38,7 @@ class MintHelper:
 		options.add_argument("disable-infobars")
 		options.add_argument("--disable-extensions")
 
-		self.driver = webdriver.Chrome(chromedriver_path, chrome_options=options)
+		self.driver = webdriver.Chrome(chromedriver_path, options=options)
 		
 		# Load the initial page
 		self.load_transactions_page()
