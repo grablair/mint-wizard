@@ -2,8 +2,9 @@ import re
 import json
 import sys
 import argparse
-import logging
 import time
+import logging
+import logging.config
 
 from datetime import datetime, timedelta
 from pytimeparse2 import parse as timeparse
@@ -12,9 +13,19 @@ from splitwise_helper import SplitwiseHelper
 from mint_helper import MintHelper
 from db import Db
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+if __name__ == "__main__":
+	logging.config.fileConfig("./logging.ini", disable_existing_loggers=False)
 
-logger = logging.getLogger("Main")
+logger = logging.getLogger(__name__)
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
 
 def list_recurring_txns(args):
 	logger.info("Listing recurring transactions")

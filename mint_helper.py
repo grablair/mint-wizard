@@ -20,7 +20,7 @@ import argparse
 
 import logging
 
-logger = logging.getLogger("MintHelper")
+logger = logging.getLogger(__name__)
 
 # TODO: can use better filters
 # e.g. https://mint.intuit.com/transactions?categoryIds=66949270_12&startDate=2023-06-01&endDate=2023-06-30&exclHidden=T

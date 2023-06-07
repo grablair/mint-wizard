@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import json
 import logging
 
-logger = logging.getLogger("Db")
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 

@@ -8,7 +8,7 @@ import json
 
 import util
 
-logger = logging.getLogger("SplitwiseHelper")
+logger = logging.getLogger(__name__)
 
 class SplitwiseHelper:
 	def __init__(self, creds, mint, shorthand_json_path, user_id_to_name_json_path, mint_custom_user_identifier):
