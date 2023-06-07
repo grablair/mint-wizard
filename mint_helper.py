@@ -5,6 +5,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.chrome.options import Options
 
 from decimal import Decimal
 
@@ -23,13 +24,21 @@ import logging
 # https://mint.intuit.com/transactions?categoryIds=66949270_12&startDate=2023-06-01&endDate=2023-06-30&exclHidden=T
 
 class MintHelper:
-	def __init__(self, creds, chromedriver_path, db):
+	def __init__(self, creds, chromedriver_path, db, run_headless):
 		self.creds = creds
 		self.db = db
-		self.driver = webdriver.Chrome(chromedriver_path)
 
-		# Set the window size
-		self.driver.set_window_size(1920, 1080)
+		options = Options()
+
+		if run_headless:
+			options.add_argument("--headless")
+
+		options.add_argument("--no-sandbox")
+		options.add_argument("start-maximized")
+		options.add_argument("disable-infobars")
+		options.add_argument("--disable-extensions")
+
+		self.driver = webdriver.Chrome(chromedriver_path, chrome_options=options)
 		
 		# Load the initial page
 		self.load_transactions_page()

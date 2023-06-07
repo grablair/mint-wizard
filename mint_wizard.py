@@ -38,17 +38,21 @@ def run_auto_processor(args):
 	creds = json.load(open(args.credentials_path))
 	config = json.load(open(args.config))
 
-	mint = MintHelper(creds, args.chromedriver_path)
+	mint = MintHelper(creds, args.chromedriver_path, args.db, args.headless)
 	splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier)
 
+	# Recategorize transactions in Mint
+	# TODO: Move to database with multiple patterns (name, price, etc)
 	if "patterns_to_recategorize" in config:
 		mint.recategorize_target_transactions(config["patterns_to_recategorize"])
 	
+	# Process Splitwise expenses and add transactions to Mint
 	splitwise.process_splitwise_expenses()
 
+	# Add any recurring transactions to Mint
+	mint.process_recurring_transaction_completion()
 
 	mint.close()
-
 	logging.info("Mint auto-processing complete!")
 
 if __name__ == "__main__":
@@ -65,6 +69,7 @@ if __name__ == "__main__":
 	auto_process_parser.add_argument("-names", "--splitwise-user-id-to-name-json", help="The path of the JSON file used to override names fetched from Splitwise")
 	auto_process_parser.add_argument("-mintid", "--mint-custom-user-identifier", help="Turns on user-specific Splitwise flags. See README")
 	auto_process_parser.add_argument("-config", help="Path to config file with recurring transactions and recategorizations", default="./config.json")
+	auto_process_parser.add_argument("--headless", help="Run the Selenium driver in headless mode", type=bool, default=True)
 	auto_process_parser.set_defaults(func=run_auto_processor)
 
 	recurring_transactions_subparser = subparsers.add_parser("recurring-txns", help="Configure recurring Mint transactions")
@@ -87,52 +92,3 @@ if __name__ == "__main__":
 
 	args = parser.parse_args()
 	args.func(args)
-
-# def add_recurring_transactions(recurring_txns):
-# 	pass
-
-# TODO: Move these entries elsewhere
-# def handle_apple_monthly_installments():
-# 	""" Hides / recategorizes auto-recurring Apple Card monthly installments """
-
-# 	clear_search_filters()
-# 	wait_for_transaction_table()
-
-# 	instances_to_recategorize = [
-# 		(Decimal("-17.87"), "Apple Watch Payment", "Mobile Phone", date.fromisoformat("2023-11-10")),
-# 		(Decimal("-22.87"), "iPhone 13 Pro Payment", "Mobile Phone", date.fromisoformat("2023-09-10")),
-# 		(Decimal("-32.87"), "iPhone 14 Pro Payment", "Mobile Phone", date.fromisoformat("2024-09-10")),
-# 		(Decimal("-45.79"), "Courtney's Phone", HIDE_CATEGORY, date.fromisoformat("2023-09-10")),
-# 		(Decimal("-11.20"), "Courtney's Insurance", HIDE_CATEGORY, date.fromisoformat("2023-09-10")),
-# 		(Decimal("-45.79"), "Kevin's Phone", HIDE_CATEGORY, date.fromisoformat("2023-09-10")),
-# 		(Decimal("-11.20"), "Kevin's Insurance", HIDE_CATEGORY, date.fromisoformat("2023-09-10"))
-# 	]
-
-# 	txns = get_elems_by_description("Monthly Installments")
-# 	txns.reverse()
-
-# 	# TODO: group these by date, make properly idempotent
-# 	for txn in txns:
-# 		raw_price = txn.find_element(By.CSS_SELECTOR, '[class*="StyledComponents__TransactionAmount"]').text
-# 		price = Decimal(raw_price.replace("$", "")) 
-
-# 		for instance_price, desc, category, end_date in list(instances_to_recategorize):
-# 			if end_date < date.today():
-# 				logging.debug("Apple Card installment {} has expired with end date of {}".format(desc, end_date))
-# 				continue
-
-# 			if price == instance_price:
-# 				instances_to_recategorize.remove((instance_price, desc, category))
-# 				recategorize_txn(txn, category, description=desc)
-# 				break
-# 		else:
-# 			logging.warning("Unknown Apple Card installment plan with price ${}".format(math.abs(instance_price)))
-# 			tag_txn(txn, NEEDS_ATTENTION_TAG)
-
-
-# def handle_paycheck():
-# 	txns = get_elems_by_description("External Deposit - AMAZON DEV")
-
-# 	for txn in txns:
-# 		logging.info("Changing category for paycheck received on date: {}".format(txn.find_element(By.CSS_SELECTOR, 'td:nth-child(2) div').text))
-# 		recategorize_txn(txn, "Paycheck", description="Amazon Paycheck")
