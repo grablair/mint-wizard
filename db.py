@@ -73,7 +73,7 @@ class Db:
 			category=category,
 			dedupe_string=token_hex(8),
 			recurring_event=recurring_event,
-			previous_occurrence=min(datetime.now(), recurring_event.dtstart)
+			previous_occurrence=datetime.now() if recurring_event.dtstart == None else min(datetime.now(), recurring_event.dtstart)
 		)
 
 		with Session(self.engine) as session:
