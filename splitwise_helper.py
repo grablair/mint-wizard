@@ -75,6 +75,9 @@ class SplitwiseHelper:
 							charge_modifier_used = True
 							logger.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
 							self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
+			elif shorthand_match:
+				log.error("Shorthand found in expense, but there is no category mapped to it!")
+				continue
 			else:
 				# otherwise look for a JSON object
 				first_bracket = stripped_description.find("{")
