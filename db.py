@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, select, insert
 from sqlalchemy.types import TypeDecorator, TEXT
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
 from typing import Optional, List
@@ -67,6 +67,9 @@ class Db:
 		if not isinstance(recurring_event, RecurringEvent) or not recurring_event.is_recurring:
 			raise ValueError("Event must be recurring, but is not.")
 
+		if recurring_event.dtstart != None and recurring_event.dtstart <= datetime.now():
+			logger.warn("Warning! Start date is in the past. A transaction will _not_ be created automatically for that start time.")
+
 		txn = RecurringTransaction(
 			description=description,
 			amount=str(amount_decimal),
@@ -79,7 +82,8 @@ class Db:
 		with Session(self.engine) as session:
 			session.add(txn)
 			session.commit()
-			logger.info("Created new recurring transaction: %s" % txn)
+			txn = session.get(RecurringTransaction, txn.id)
+			logger.info(f"Created new recurring transaction: {txn}. Next occurrence: {self.get_next_occurrence_for_txn(txn)}")
 
 	def remove_recurring_transaction(self, id):
 		with Session(self.engine) as session:
@@ -111,13 +115,15 @@ class Db:
 	def process_recurring_transaction_completion(self, id):
 		with Session(self.engine) as session:
 			txn = session.get(RecurringTransaction, id)
-			new_occurrence = rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(txn.previous_occurrence)
+			new_occurrence = self.get_next_occurrence_for_txn(txn)
 			next_occurrence = rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(new_occurrence)
 			logger.info(f"updating previous occurrence for transaction \"{txn.description}\" from {txn.previous_occurrence} to {new_occurrence}. Next occurrence will be {next_occurrence}")
 			txn.previous_occurrence = new_occurrence
 			session.commit()
 
-	def get_next_occurrence_for_txn(self, id):
+	def get_next_occurrence_for_txn_by_id(self, id):
 		with Session(self.engine) as session:
-			txn = session.get(RecurringTransaction, id)
-			return rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(txn.previous_occurrence)
+			return self.get_next_occurrence_for_txn(session.get(RecurringTransaction, id))
+
+	def get_next_occurrence_for_txn(self, txn):
+		return rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(txn.previous_occurrence)
