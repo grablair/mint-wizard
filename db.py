@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
+def get_next_occurrence_for_txn(txn):
+	return rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(txn.previous_occurrence)
+
 class RecurringEventType(TypeDecorator):
 	impl = TEXT
 	cache_ok = True
@@ -51,7 +54,7 @@ class RecurringTransaction(Base):
 	previous_occurrence: Mapped[datetime]
 
 	def __repr__(self) -> str:
-		return f"RecurringTransaction(id={self.id!r}, description={self.description!r}, amount={self.amount!r}, category={self.category!r}, dedupe_string={self.dedupe_string!r}, recurring_event=RecurringEvent(rule='{self.recurring_event.format(self.recurring_event.get_RFC_rrule())}'), previous_occurrence={self.previous_occurrence!r})"
+		return f"RecurringTransaction(id={self.id!r}, description={self.description!r}, amount={self.amount!r}, category={self.category!r}, dedupe_string={self.dedupe_string!r}, recurring_event=RecurringEvent(rule='{self.recurring_event.format(self.recurring_event.get_RFC_rrule())}'), previous_occurrence={self.previous_occurrence!r}, inferred_next_occurrence='{get_next_occurrence_for_txn(self)}')"
 
 class Db:
 	def __init__(self, db_path):
@@ -83,7 +86,7 @@ class Db:
 			session.add(txn)
 			session.commit()
 			txn = session.get(RecurringTransaction, txn.id)
-			logger.info(f"Created new recurring transaction: {txn}. Next occurrence: {self.get_next_occurrence_for_txn(txn)}")
+			logger.info(f"Created new recurring transaction: {txn}. Next occurrence: {get_next_occurrence_for_txn(txn)}")
 
 	def remove_recurring_transaction(self, id):
 		with Session(self.engine) as session:
@@ -115,7 +118,7 @@ class Db:
 	def process_recurring_transaction_completion(self, id):
 		with Session(self.engine) as session:
 			txn = session.get(RecurringTransaction, id)
-			new_occurrence = self.get_next_occurrence_for_txn(txn)
+			new_occurrence = get_next_occurrence_for_txn(txn)
 			next_occurrence = rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(new_occurrence)
 			logger.info(f"updating previous occurrence for transaction \"{txn.description}\" from {txn.previous_occurrence} to {new_occurrence}. Next occurrence will be {next_occurrence}")
 			txn.previous_occurrence = new_occurrence
@@ -123,7 +126,5 @@ class Db:
 
 	def get_next_occurrence_for_txn_by_id(self, id):
 		with Session(self.engine) as session:
-			return self.get_next_occurrence_for_txn(session.get(RecurringTransaction, id))
+			return get_next_occurrence_for_txn(session.get(RecurringTransaction, id))
 
-	def get_next_occurrence_for_txn(self, txn):
-		return rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(txn.previous_occurrence)
