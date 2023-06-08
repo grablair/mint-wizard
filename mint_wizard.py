@@ -12,6 +12,7 @@ from pytimeparse2 import parse as timeparse
 from splitwise_helper import SplitwiseHelper
 from mint_helper import MintHelper
 from db import Db
+import util
 
 if __name__ == "__main__":
 	logging.config.fileConfig("./logging.ini", disable_existing_loggers=False)
@@ -29,11 +30,11 @@ sys.excepthook = handle_exception
 
 def list_recurring_txns(args):
 	logger.info("Listing recurring transactions")
-	[print(txn) for txn in args.db.get_all_recurring_transactions()]
+	[logger.info(txn) for txn in args.db.get_all_recurring_transactions()]
 
 def add_recurring_txn(args):
 	logger.info("Adding recurring transaction")
-	args.db.create_recurring_transaction(args.description, args.amount, args.category, args.frequency, args.first_occurrence, args.stop_after)
+	args.db.create_recurring_transaction(args.description, args.amount, args.category, args.recurring_event)
 
 def remove_recurring_txn(args):
 	logger.info("Removing recurring transaction")
@@ -100,9 +101,7 @@ if __name__ == "__main__":
 	add_recurring_txn_parser.add_argument("-d", "--description", help="Description of the transaction", required=True)
 	add_recurring_txn_parser.add_argument("-a", "--amount", help="Amount of the transaction. Negative numbers are charges, positive numbers are credits", required=True)
 	add_recurring_txn_parser.add_argument("-c", "--category", help="Mint category for the transaction", required=True)
-	add_recurring_txn_parser.add_argument("-f", "--frequency", help="Frequency of recurrence. Ex: 7d", required=True, type=(lambda frequency: timeparse(frequency, as_timedelta=True)))
-	add_recurring_txn_parser.add_argument("-fd", "--first-occurrence", help="String representation of the first occurrence, in the following format: YYYY-MM-DD HH:MM", required=True, type=lambda s: datetime.strptime(s, '%Y-%m-%d %H:%M'))
-	add_recurring_txn_parser.add_argument("-sd", "--stop-after", help="Optional string representation of the ending datetime for recurrence, in the following format: YYYY-MM-DD HH:MM", type=lambda s: datetime.strptime(s, '%Y-%m-%d %H:%M'))
+	add_recurring_txn_parser.add_argument("-r", "--recurrence-rule", help="Natural language representation of a recurring event. Can include start dates and end dates, but they are not required. Ex: \"every 2 weeks starting next monday until jan\", \"every day\"", dest="recurring_event", required=True, type=util.str_to_valid_recurring_event)
 	add_recurring_txn_parser.set_defaults(func=add_recurring_txn)
 
 	remove_recurring_txn_parser = recurring_transactions_subparsers.add_parser("remove", help="Remove a recurring transaction")
