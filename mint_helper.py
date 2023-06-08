@@ -262,7 +262,7 @@ class MintHelper:
 		while txns:
 			for txn in txns:
 				logger.info("Creating transaction for %s" % txn)
-				#self.add_transaction(txn.description, txn.amount, txn.category, txn.next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, txn.next_occurrence.isoformat()))
+				self.add_transaction(txn.description, txn.amount, txn.category, txn.next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, txn.next_occurrence.isoformat()))
 				self.db.process_recurring_transaction_completion(txn.id)
 			txns = self.db.get_past_due_recurring_transactions()
 			logger.info("%s recurring transactions to process in next iteration" % len(txns))
