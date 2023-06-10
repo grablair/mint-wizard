@@ -5,6 +5,7 @@ import argparse
 import time
 import logging
 import logging.config
+import os
 
 from datetime import datetime, timedelta
 from pytimeparse2 import parse as timeparse
@@ -74,17 +75,19 @@ def run_auto_processor(args):
 
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser()
-	parser.add_argument("-db", "--db-path", help="The path to the sqlite database file", default="./mint-wizard.db", type=(lambda db_path: Db(db_path)), dest="db")
+	mint_wizard_dir = os.path.dirname(os.path.realpath(__file__))
 
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-db", "--db-path", help="The path to the sqlite database file", default=f"{mint_wizard_dir}/mint-wizard.db", type=(lambda db_path: Db(db_path)), dest="db")
+	parser.add_argument("-v", "--verbose", help="Display debug logs", action='store_true')
 	subparsers = parser.add_subparsers(required=True)
 
 	auto_process_parser = subparsers.add_parser("auto-process", help="Run the auto-processor")
 	auto_process_parser.add_argument("-creds", "--credentials-path", help="The path to the file containing your credentials", required=True)
-	auto_process_parser.add_argument("-short", "--shorthand-json-path", help="The path to the file containing the mapping of shorthand identifiers to mint categories", default="./shorthands.json")
+	auto_process_parser.add_argument("-short", "--shorthand-json-path", help="The path to the file containing the mapping of shorthand identifiers to mint categories", default=f"{mint_wizard_dir}/shorthands.json")
 	auto_process_parser.add_argument("-names", "--splitwise-user-id-to-name-json", help="The path of the JSON file used to override names fetched from Splitwise")
 	auto_process_parser.add_argument("-mintid", "--mint-custom-user-identifier", help="Turns on user-specific Splitwise flags. See README")
-	auto_process_parser.add_argument("-config", help="Path to config file with recurring transactions and recategorizations", default="./config.json")
+	auto_process_parser.add_argument("-config", help="Path to config file with recurring transactions and recategorizations", default=f"{mint_wizard_dir}/config.json")
 	auto_process_parser.add_argument("-days", "--splitwise-days-to-look-back", help="The number of days to look back when determining expenses to process (script looks at updated dates, not dates of the expenses)", type=int, default=7)
 	auto_process_parser.add_argument("--recurring-txns", help="Process recurring transactions", action=argparse.BooleanOptionalAction, default=True)
 	auto_process_parser.add_argument("--recategorize-txns", help="Perform transaction recategorization", action=argparse.BooleanOptionalAction, default=True)
@@ -109,4 +112,14 @@ if __name__ == "__main__":
 	remove_recurring_txn_parser.set_defaults(func=remove_recurring_txn)
 
 	args = parser.parse_args()
+
+	if args.verbose:
+		root_logger = logging.getLogger()
+		root_logger.setLevel(logging.DEBUG)
+		for handler in root_logger.handlers:
+			handler.setLevel(logging.DEBUG)
+		logger.debug("Verbose logging enabled")
+
+	logger.debug(f"Args parsed: {args}")
+
 	args.func(args)
