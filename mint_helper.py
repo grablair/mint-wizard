@@ -5,7 +5,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from selenium.webdriver import ChromeOptions
+from selenium.webdriver import ChromeOptions, FirefoxOptions
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 from decimal import Decimal
 
@@ -22,37 +23,64 @@ import logging
 
 from db import get_next_occurrence_for_txn
 
+
 logger = logging.getLogger(__name__)
 
 # TODO: can use better filters
 # e.g. https://mint.intuit.com/transactions?categoryIds=66949270_12&startDate=2023-06-01&endDate=2023-06-30&exclHidden=T
 
 class MintHelper:
-	def __init__(self, creds, db, run_headless):
+	def __init__(self, creds, db, run_headless, driver_type, run_remote, remote_url):
 		self.creds = creds
 		self.db = db
+		self.driver_type = driver_type
+		self.run_remote = run_remote
+		self.remote_url = remote_url
 
-		options = ChromeOptions()
-
-		if run_headless:
-			options.add_argument("--headless")
-
-		options.add_argument("--no-sandbox")
-		options.add_argument("window-size=1500x1700")
-		options.add_argument("disable-infobars")
-		options.add_argument("--disable-extensions")
-
-		self.driver = webdriver.Chrome(options=options)
+		if driver_type == "FIREFOX":
+			self.options = FirefoxOptions()
+			self.desired_capabilities = DesiredCapabilities.FIREFOX
+		elif driver_type == "CHROME":
+			self.options = ChromeOptions()
+			self.desired_capabilities = DesiredCapabilities.CHROME
+		else:
+			raise ValueError(f"Only support Chrome and Firefox drivers right now. Specified: {driver_type}")
 		
-		# Load the initial page
-		self.load_transactions_page()
+		if run_headless:
+			self.options.add_argument("--headless")
+
+		self.options.add_argument("--no-sandbox")
+		self.options.add_argument("window-size=1500x1700")
+		self.options.add_argument("--enable-javascript")
+
+	def __enter__(self):
+		if self.run_remote:
+			self.driver = webdriver.Remote(
+				command_executor=self.remote_url, 
+				options=self.options, 
+				desired_capabilities=self.desired_capabilities)
+		if self.driver_type == "FIREFOX":
+			self.driver = webdriver.Firefox(options=self.options)
+		elif self.driver_type == "CHROME":
+			self.driver = webdriver.Chrome(options=self.options)
+		else:
+			raise ValueError(f"Only support Chrome and Firefox drivers right now. Specified: {driver_type}")
+		
+
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		logger.info("Closing session")
+
+		self.driver.quit()
+
+		time.sleep(5)
 
 	def close(self):
 		# Sleep just in case there are remaining background tasks
 		time.sleep(3)
 
 		# Close the driver
-		self.driver.close()
 		self.driver.quit()
 
 	# Perform login actions. Should work for first or subsequent logins. Supports TOTP 2FA (may be required...)
@@ -61,7 +89,7 @@ class MintHelper:
 
 		try:
 			# Try and see if the transaction table shows up
-			self.wait_for_transaction_table(timeout=3)
+			self.wait_for_transaction_table(timeout=10)
 		except TimeoutException:
 			# Assume we are on the login screen, then
 
@@ -259,6 +287,7 @@ class MintHelper:
 
 	def process_recurring_transactions(self):
 		logger.info("Processing recurring transactions")
+
 		txns = self.db.get_past_due_recurring_transactions()
 		logger.info("%s recurring transactions to process in first iteration" % len(txns))
 		while txns:

@@ -19,7 +19,6 @@ class SplitwiseHelper:
 
 		self.my_user_id = self.splitwise.getCurrentUser().getId()
 		self.my_friends = self.splitwise.getFriends()
-
 		self.user_id_to_name_overrides = {int(k):v for k,v in json.load(open(user_id_to_name_json_path)).items()} if user_id_to_name_json_path else {}
 		self.shorthands_to_categories = json.load(open(shorthand_json_path))
 
@@ -76,7 +75,7 @@ class SplitwiseHelper:
 							logger.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
 							self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
 			elif shorthand_match:
-				log.error("Shorthand found in expense, but there is no category mapped to it!")
+				logger.error("Shorthand found in expense, but there is no category mapped to it!")
 				continue
 			else:
 				# otherwise look for a JSON object
