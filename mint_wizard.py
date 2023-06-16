@@ -44,6 +44,10 @@ def remove_recurring_txn(args):
 def run_auto_processor(args):
 	logger.info("Starting run of the Mint Auto-Processor")
 
+	if (args.remote is None) != (args.remote_url is None):
+		log.error("You must specify both --remote and --remote-url, or neither")
+		sys.exit(1)
+
 	if args.mint_custom_user_identifier and not re.match(r'^[A-Z]+$', args.mint_custom_user_identifier):
 		print("--mint-custom-user-identifier must be solely positive letters from A-Z. It was: {}".format(args.mint_custom_user_identifier))
 		sys.exit()
@@ -117,10 +121,6 @@ if __name__ == "__main__":
 	remove_recurring_txn_parser.set_defaults(func=remove_recurring_txn)
 
 	args = parser.parse_args()
-
-	if bool(args.remote) != bool(args.remote_url):
-		log.error("You must specify both --remote and --remote-url, or neither")
-		sys.exit(1)
 
 	if args.verbose:
 		root_logger = logging.getLogger()
