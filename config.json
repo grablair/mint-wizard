@@ -1,29 +1,5 @@
 {
-	"recurring_transactions": [
-		{
-			"description": "Apple Watch Payment",
-			"price": "-17.87",
-			"category": "Mobile Phone",
-			"end_date": "2023-11-10"
-		},
-		{
-			"description": "iPhone 13 Pro Payment",
-			"price": "-22.87",
-			"category": "Mobile Phone",
-			"end_date": "2023-09-10"
-		},
-		{
-			"description": "iPhone 14 Pro Payment",
-			"price": "-32.87",
-			"category": "Mobile Phone",
-			"end_date": "2024-09-10"
-		}
-	],
 	"patterns_to_recategorize": [
-		["^Monthly Installments", "Hide from Budgets & Trends", "Apple Card Monthly Installment"],
-		["External Deposit - AMAZON DEV", "Paycheck", "Amazon Paycheck"]
-	],
-	"splitwise": {
-
-	}
+		["^Frankie and Jos.* ", "Fast Food", "Frankie and Jo's Ice Cream"]
+	]
 }
