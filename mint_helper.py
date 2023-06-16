@@ -112,6 +112,7 @@ class MintHelper:
 
 	# Waits for and returns the element by the given CSS selector
 	def get_elem_by_css(self, selector, timeout=10, elem=False):
+		self.hide_account_status_bar()
 		return WebDriverWait(elem if elem else self.driver, timeout).until(
 		    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
 		)
@@ -120,6 +121,7 @@ class MintHelper:
 		return self.get_elem_by_css('[data-automation-id="{}"]'.format(id))
 
 	def get_elems_by_description(self, desc_substring):
+		self.hide_account_status_bar()
 		return self.driver.find_elements(By.CSS_SELECTOR, 'tr[title^="Statement Name"][title*="{}"i]'.format(desc_substring))
 
 	def get_all_transactions(self):
@@ -138,6 +140,8 @@ class MintHelper:
 			self.search_for_transactions("-tag:AUTOPROCESSED")
 
 	def search_for_transactions(self, query):
+		self.hide_account_status_bar()
+
 		time.sleep(0.25)
 
 		self.clear_search_filters()
@@ -152,6 +156,8 @@ class MintHelper:
 		self.wait_for_transaction_table(False)
 
 	def clear_search_filters(self):
+		self.hide_account_status_bar()
+
 		try:
 			while True:
 				filter_chip = self.driver.find_element(By.CSS_SELECTOR, 'button[data-automation-id^="FILTER_"]:not([data-automation-id="FILTER_UNCATEGORIZED_TRANSACTIONS"])')
@@ -186,6 +192,7 @@ class MintHelper:
 		elem.send_keys(Keys.ESCAPE)
 
 	def recategorize_txn(self, txn, category, description=False, set_as_autoprocessed=True):
+		self.hide_account_status_bar()
 		self.get_elem_by_automation_id('EDIT_TRANSACTION_LINK').click()
 
 		if description:
