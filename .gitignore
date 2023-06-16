@@ -1,3 +1,4 @@
 *.db
 __pycache__/*
 logs/*.log*
+geckodriver.log
