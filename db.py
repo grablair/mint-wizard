@@ -19,12 +19,14 @@ from recurrent.event_parser import RecurringEvent
 import json
 import logging
 
+from util import rrule_for_txn, normalize_rfc_rule
+
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
 def get_next_occurrence_for_txn(txn):
-	return rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(txn.previous_occurrence)
+	return rrule.rrulestr(rrule_for_txn(txn)).after(txn.previous_occurrence)
 
 class RecurringEventType(TypeDecorator):
 	impl = TEXT
@@ -37,8 +39,9 @@ class RecurringEventType(TypeDecorator):
 
 	def process_result_value(self, value, dialect):
 		if value is not None:
+			rfc_rule = normalize_rfc_rule(value)
 			r = RecurringEvent()
-			r.parse(r.format(value))
+			r.parse(r.format(rfc_rule))
 			return r
 		return value
 
@@ -54,7 +57,7 @@ class RecurringTransaction(Base):
 	previous_occurrence: Mapped[datetime]
 
 	def __repr__(self) -> str:
-		return f"RecurringTransaction(id={self.id!r}, description={self.description!r}, amount={self.amount!r}, category={self.category!r}, dedupe_string={self.dedupe_string!r}, recurring_event=RecurringEvent(rule='{self.recurring_event.format(self.recurring_event.get_RFC_rrule())}'), previous_occurrence={self.previous_occurrence!r}, inferred_next_occurrence='{get_next_occurrence_for_txn(self)}')"
+		return f"RecurringTransaction(id={self.id!r}, description={self.description!r}, amount={self.amount!r}, category={self.category!r}, dedupe_string={self.dedupe_string!r}, recurring_event=RecurringEvent(rule='{self.recurring_event.format(rrule_for_txn(self))}'), previous_occurrence={self.previous_occurrence!r}, inferred_next_occurrence='{get_next_occurrence_for_txn(self)}')"
 
 class Db:
 	def __init__(self, db_path):
@@ -98,7 +101,7 @@ class Db:
 
 	def get_past_due_recurring_transactions(self):
 		def is_next_recurrence_before_now(txn):
-			rules = rrule.rrulestr(txn.recurring_event.get_RFC_rrule())
+			rules = rrule.rrulestr(rrule_for_txn(txn))
 			return rules.after(txn.previous_occurrence) < datetime.now()
 
 		self.clean_up_expired_recurring_transactions()
@@ -109,7 +112,7 @@ class Db:
 
 		with Session(self.engine) as session:
 			for txn in session.scalars(stmt).all():
-				if "until" in txn.recurring_event.get_params() and list(rrule.rrulestr(txn.recurring_event.get_RFC_rrule()))[-1] == txn.previous_occurrence:
+				if "until" in txn.recurring_event.get_params() and list(rrule.rrulestr(rrule_for_txn(txn)))[-1] == txn.previous_occurrence:
 					# if there is an end date, and if the final occurrence is equal to the previous one
 					logger.info("Cleaning up expired recurring transaction %s" % txn)
 					session.delete(txn)
@@ -119,7 +122,7 @@ class Db:
 		with Session(self.engine) as session:
 			txn = session.get(RecurringTransaction, id)
 			new_occurrence = get_next_occurrence_for_txn(txn)
-			next_occurrence = rrule.rrulestr(txn.recurring_event.get_RFC_rrule()).after(new_occurrence)
+			next_occurrence = rrule.rrulestr(rrule_for_txn(txn)).after(new_occurrence)
 			logger.info(f"updating previous occurrence for transaction \"{txn.description}\" from {txn.previous_occurrence} to {new_occurrence}. Next occurrence will be {next_occurrence}")
 			txn.previous_occurrence = new_occurrence
 			session.commit()

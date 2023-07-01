@@ -50,7 +50,7 @@ class MintHelper:
 			self.options.add_argument("--headless")
 
 		self.options.add_argument("--no-sandbox")
-		self.options.add_argument("window-size=1500x1700")
+		self.options.add_argument("window-size=1900x1700")
 		self.options.add_argument("--enable-javascript")
 
 	def __enter__(self):
@@ -65,7 +65,8 @@ class MintHelper:
 			self.driver = webdriver.Chrome(options=self.options)
 		else:
 			raise ValueError(f"Only support Chrome and Firefox drivers right now. Specified: {driver_type}")
-		
+
+		self.driver.set_window_size(1900, 1700)
 
 		return self
 
@@ -110,23 +111,35 @@ class MintHelper:
 					.send_keys(pyotp.TOTP(self.creds['mint']['totp_secret']).now())
 				self.get_elem_by_css('[data-testid="VerifySoftTokenSubmitButton"]').click()
 
+	def center_elem(self, elem):
+		if elem:
+			self.driver.execute_script('arguments[0].scrollIntoView({block: "center"});', elem)
+
 	# Waits for and returns the element by the given CSS selector
 	def get_elem_by_css(self, selector, timeout=10, elem=False):
 		self.hide_account_status_bar()
-		return WebDriverWait(elem if elem else self.driver, timeout).until(
+		elem = WebDriverWait(elem if elem else self.driver, timeout).until(
 		    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
 		)
+		self.center_elem(elem)
+		return elem
 
-	def get_elem_by_automation_id(self, id):
-		return self.get_elem_by_css('[data-automation-id="{}"]'.format(id))
+
+	def get_elem_by_automation_id(self, id, elem=False):
+		return self.get_elem_by_css('[data-automation-id="{}"]'.format(id), elem=elem)
 
 	def get_elems_by_description(self, desc_substring):
 		self.hide_account_status_bar()
-		return self.driver.find_elements(By.CSS_SELECTOR, 'tr[title^="Statement Name"][title*="{}"i]'.format(desc_substring))
+		self.wait_for_transaction_table()
+		elem = self.driver.find_elements(By.CSS_SELECTOR, 'tr[title^="Statement Name"][title*="{}"i]'.format(desc_substring))
+		self.center_elem(elem)
+		return elem
+
 
 	def get_all_transactions(self):
+		self.hide_account_status_bar()
 		self.wait_for_transaction_table()
-		return self.get_elems_by_description("")
+		return self.driver.find_elements(By.CSS_SELECTOR, 'tr[title^="Statement Name"]')
 
 	def hide_account_status_bar(self):
 		self.driver.execute_script("let result = document.querySelector('div[class*=\"AccountStatusBar\"]'); if (result != null) result.style.display = 'none';")
@@ -161,6 +174,7 @@ class MintHelper:
 		try:
 			while True:
 				filter_chip = self.driver.find_element(By.CSS_SELECTOR, 'button[data-automation-id^="FILTER_"]:not([data-automation-id="FILTER_UNCATEGORIZED_TRANSACTIONS"])')
+				self.center_elem(filter_chip)
 				filter_chip.click()
 		except NoSuchElementException:
 			pass
@@ -176,10 +190,12 @@ class MintHelper:
 
 	def select_all_txns(self, txns):
 		for txn in txns:
-			txn.find_element(By.CSS_SELECTOR, '[class*="ChoiceItem-wrapper"]').click()
+			self.get_elem_by_css('[class*="ChoiceItem-wrapper"]').click()
 			time.sleep(2)
 
-	def fill_category_dropdown(self, elem, category):
+	def fill_category_dropdown(self, category):
+		elem = self.get_elem_by_css('input[data-automation-id="ADD_TRANSACTIONS_CATEGORY"]')
+
 		current_category = elem.get_attribute("value")
 		
 		clear_text = ""
@@ -193,7 +209,7 @@ class MintHelper:
 
 	def recategorize_txn(self, txn, category, description=False, set_as_autoprocessed=True):
 		self.hide_account_status_bar()
-		self.get_elem_by_automation_id('EDIT_TRANSACTION_LINK').click()
+		self.get_elem_by_automation_id('EDIT_TRANSACTION_LINK', elem=txn).click()
 
 		if description:
 			current_description = self.get_elem_by_automation_id('ADD_TRANSACTIONS_DESCRIPTION').get_attribute("value")
@@ -206,14 +222,13 @@ class MintHelper:
 			self.get_elem_by_automation_id('ADD_TRANSACTIONS_DESCRIPTION').send_keys("{} ({})".format(description, current_description))
 
 
-		self.fill_category_dropdown(self.get_elem_by_automation_id('ADD_TRANSACTIONS_CATEGORY'), category)
+		self.fill_category_dropdown(category)
 
 		if set_as_autoprocessed:
 			self.get_elem_by_automation_id('SELECT_A_TAG').click()
 			self.get_elem_by_automation_id('TAG_CHOICE_AUTOPROCESSED').click()
 
-		actions = ActionChains(self.driver)
-		actions.move_to_element(self.get_elem_by_automation_id('SAVE')).perform()
+		self.driver.execute_script('arguments[0].scrollIntoView({block: "center"});', self.get_elem_by_automation_id('SAVE'))
 
 		self.get_elem_by_automation_id('SAVE').click()
 		self.wait_for_edit_txn_to_close()
@@ -242,7 +257,7 @@ class MintHelper:
 			logger.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
 			return
 
-		logger.info("Adding transaction for %s with price %s and category %s" % (desc, price, category))
+		logger.info("Adding transaction for \"%s\" with price $%s and category \"%s\"" % (desc, price, category))
 
 		self.clear_search_filters()
 
@@ -253,7 +268,7 @@ class MintHelper:
 		self.get_elem_by_css('span[data-date-field="true"][aria-labelledby*="day-field"]').send_keys(date.day)
 		self.get_elem_by_css('span[data-date-field="true"][aria-labelledby*="year-field"]').send_keys(date.year)
 
-		self.fill_category_dropdown(self.get_elem_by_css('input[data-automation-id="ADD_TRANSACTIONS_CATEGORY"]'), category)
+		self.fill_category_dropdown(category)
 
 		self.get_elem_by_automation_id('ADD_TRANSACTIONS_AMOUNT').clear()
 		self.get_elem_by_automation_id('ADD_TRANSACTIONS_AMOUNT').send_keys(str(price.copy_abs()))	
@@ -267,30 +282,36 @@ class MintHelper:
 
 		self.get_elem_by_automation_id('SAVE').click()
 
-		logger.info("Added transaction for %s with price %s and category %s" % (desc, price, category))
+		logger.info("Added transaction for \"%s\" with price $%s and category \"%s\"" % (desc, price, category))
 
 		self.wait_for_edit_txn_to_close()
+
+	def get_txn_statement_name(self, txn):
+		return txn.get_attribute("title")[len("Statement Name: "):]
 
 	def recategorize_target_transactions(self, pattern_configs):
 		logger.info("Starting to recategorize target transactions by pattern")
 
+		self.wait_for_transaction_table()
+
 		for pattern, category, new_description in pattern_configs:
-			logger.info("Processing pattern %s; recategorizing matches to %s with new description %s" % (pattern, category, new_description))
+			logger.info("Processing pattern /%s/; recategorizing matches to \"%s\" with new description \"%s\"" % (pattern, category, new_description))
 
 			txns = self.get_all_transactions()
 			txns.reverse()
 
+			txns = list(filter(lambda txn: re.search(pattern, self.get_txn_statement_name(txn)), txns))
+
 			logger.info("%s matches found for pattern" % len(txns))
 			for txn in txns:
-				statement_name = txn.get_attribute("title")[len("Statement Name: "):]
+				statement_name = self.get_txn_statement_name(txn)
 				if "AUTOCATEGORIZED" in statement_name:
-					logger.info("Skipping matching transaction %s as it's already auto-categorized" % statement_name.replace(" | AUTOCATEGORIZED", "").strip())
+					logger.info("Skipping matching transaction \"%s\" as it's already auto-categorized" % statement_name.replace(" | AUTOCATEGORIZED", "").strip())
 					continue
 
-				if re.match(patterns_to_hide, statement_name):
-					logger.info("Recategorizing matching transaction %s to %s, as it matches pattern %s" % (statement_name, category, pattern))
-					self.recategorize_txn(txn, category, description="%s | AUTOCATEGORIZED" % new_description)
-					logger.info("Transaction recategorized")
+				logger.info("Renaming matching transaction \"%s\" to \"%s\", and recategorizing as \"%s\"" % (statement_name, new_description, category))
+				self.recategorize_txn(txn, category, description="%s | AUTOCATEGORIZED" % new_description)
+				logger.info("Transaction recategorized")
 
 	def process_recurring_transactions(self):
 		logger.info("Processing recurring transactions")
@@ -299,7 +320,8 @@ class MintHelper:
 		logger.info("%s recurring transactions to process in first iteration" % len(txns))
 		while txns:
 			for txn in txns:
-				logger.info("Creating transaction for %s" % txn)
+				logger.info("Creating transaction for \"%s\"" % txn)
+
 				next_occurrence = get_next_occurrence_for_txn(txn)
 				self.add_transaction(txn.description, txn.amount, txn.category, next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, next_occurrence.isoformat()))
 				self.db.process_recurring_transaction_completion(txn.id)
