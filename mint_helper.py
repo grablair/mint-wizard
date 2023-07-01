@@ -131,10 +131,7 @@ class MintHelper:
 	def get_elems_by_description(self, desc_substring):
 		self.hide_account_status_bar()
 		self.wait_for_transaction_table()
-		elem = self.driver.find_elements(By.CSS_SELECTOR, 'tr[title^="Statement Name"][title*="{}"i]'.format(desc_substring))
-		self.center_elem(elem)
-		return elem
-
+		return self.driver.find_elements(By.CSS_SELECTOR, 'tr[title^="Statement Name"][title*="{}"i]'.format(desc_substring))
 
 	def get_all_transactions(self):
 		self.hide_account_status_bar()
