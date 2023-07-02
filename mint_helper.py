@@ -141,7 +141,7 @@ class MintHelper:
 	def hide_account_status_bar(self):
 		self.driver.execute_script("let result = document.querySelector('div[class*=\"AccountStatusBar\"]'); if (result != null) result.style.display = 'none';")
 
-	def wait_for_transaction_table(self, hide_autoprocessed=True, timeout=60):
+	def wait_for_transaction_table(self, hide_autoprocessed=False, timeout=60):
 		self.get_elem_by_css('[data-automation-id="TRANSACTIONS_LIST_TABLE"], [class*="NoTransactionsFound"]', timeout)
 		self.hide_account_status_bar()
 

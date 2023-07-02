@@ -72,7 +72,7 @@ class SplitwiseHelper:
 							# want to ensure that only the charge component has been added, since
 							# the main component already has been added. 
 							charge_modifier_used = True
-							logger.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
+							logger.info("Processing Splitwise CHARGE Transaction. Description: {}; Category: {}; Amount: {}".format(stripped_description, category, -Decimal(my_expense_user.getPaidShare())))
 							self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
 			elif shorthand_match:
 				logger.error(f"Shorthand found in expense, but there is no category mapped to it! Expense: {description}")
@@ -105,7 +105,7 @@ class SplitwiseHelper:
 							case 'C':
 								if not global_charge_modifier_used:
 									charge_modifier_used = True
-									logger.info("Adding total-paid charge of {} for {} as an expense transaction".format(stripped_description, -Decimal(my_expense_user.getPaidShare())))
+									logger.info("Processing Splitwise CHARGE Transaction. Description: {}; Category: {}; Amount: {}".format(stripped_description, category, -Decimal(my_expense_user.getPaidShare())))
 									self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
 
 			amount_owed_to_me = Decimal(my_expense_user.getPaidShare()) - Decimal(my_expense_user.getOwedShare())
