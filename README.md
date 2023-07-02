@@ -5,7 +5,7 @@
 Adding one of these flags to the splitwise item description instructs the script
 to add the given expense to your Mint transactions log.
 
-It is expected that the flag is in the following format:
+It is expected that the flag be in the following format:
 
 ```
 M[modifiers]:<shorthand-key>
@@ -54,6 +54,36 @@ always one capital letter each. They are described below:
 
 	If Bob didn't include the `C` flag, then he would be sitting with an effective $25 
 	credit for the lawn mowing, despite paying for half of the expense.
+
+### Delay Action Flag
+
+Adding this flag will delay the action on the given Splitwise transaction by however
+many days are specified.
+
+It is expected that the flag be in the following format:
+
+```
+D:<days-to-delay-integer>
+```
+
+This is useful in situations where you want to collect money now for an expense that is
+going to occur in future.
+
+Example of a usecase:
+
+Bob and Alice are roommates. Alice pays the rent every month on the 5th, and collects
+rent from Bob before that by adding an recurring expense in Splitwise that recurs two
+weeks prior to the due date. That gives Bob two weeks to pay Alice before the payment
+is actually due. If Alice just put the expense in normally, the expense would be
+imported into Mint two weeks before it was due: in the month _prior_ to when it will
+be paid. Her Mint budgets would go into the negatives (note that negatives means
+credit in this context) for those two weeks, giving her an inaccurate picture of her
+overall budget status. By delaying action on the expense, she can have the actual rent
+payment and the reimbursement register on the same day in Mint, keeping her day-to-day
+overall budget balance somewhat consistent, and ensuring that related transactions in
+Mint occur on or around the same day, while still giving Bob two weeks heads up on the
+charge.
+
 
 ### Custom User-Specific Mint Transaction Flag
 
