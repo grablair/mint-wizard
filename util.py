@@ -11,6 +11,9 @@ def rrule_for_txn(txn):
 	return normalize_rfc_rule(txn.recurring_event.get_RFC_rrule(), txn.previous_occurrence)
 
 def normalize_rfc_rule(rfc_rule, default_start_date=datetime.now()):
+	# convert to string, allowing passing of the rrule by string or dateutil.rrule.rrule object
+	rfc_rule = str(rfc_rule)
+
 	if "DTSTART" not in rfc_rule:
 		rfc_rule = f"DTSTART:{default_start_date.strftime('%Y%m%dT%H%M%S')}\n{rfc_rule}"
 	if "BYHOUR" not in rfc_rule:

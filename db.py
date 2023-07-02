@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, select, insert
 from sqlalchemy.types import TypeDecorator, TEXT
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
+from dateutil.rrule import YEARLY
 from typing import Optional, List
 
 from secrets import token_hex
@@ -55,6 +56,7 @@ class RecurringTransaction(Base):
 	dedupe_string: Mapped[str]
 	recurring_event: Mapped[str] = mapped_column(RecurringEventType)
 	previous_occurrence: Mapped[datetime]
+	notes: Mapped[Optional[str]]
 
 	def __repr__(self) -> str:
 		return f"RecurringTransaction(id={self.id!r}, description={self.description!r}, amount={self.amount!r}, category={self.category!r}, dedupe_string={self.dedupe_string!r}, recurring_event=RecurringEvent(rule='{self.recurring_event.format(rrule_for_txn(self))}'), previous_occurrence={self.previous_occurrence!r}, inferred_next_occurrence='{get_next_occurrence_for_txn(self)}')"
@@ -130,4 +132,42 @@ class Db:
 	def get_next_occurrence_for_txn_by_id(self, id):
 		with Session(self.engine) as session:
 			return get_next_occurrence_for_txn(session.get(RecurringTransaction, id))
+
+	def schedule_single_transaction(self, description, amount_decimal, category, txn_date, dedupe, notes=None):
+		now = datetime.now(tz=timezone.utc)
+
+		if now > txn_date:
+			log.error(f"Invalid date for scheduling a transaction; the date must be in the past. Skipping. now: {now}; txn_date: {txn_date}")
+			return
+
+		rr = normalize_rfc_rule(rrule.rrule(
+			freq=YEARLY,
+			count=1,
+			bymonth=txn_date.month,
+			bymonthday=txn_date.day
+		))
+
+		recurring_event = RecurringEvent()
+		recurring_event.parse(recurring_event.format(rr))
+
+		txn = RecurringTransaction(
+			description=description,
+			amount=str(amount_decimal),
+			category=category,
+			dedupe_string=dedupe,
+			recurring_event=recurring_event,
+			previous_occurrence=now,
+			notes=notes
+		)
+
+		sel_stmt = select(RecurringTransaction).where(RecurringTransaction.dedupe_string == dedupe)
+		with Session(self.engine) as session:
+			if session.execute(sel_stmt).first() is not None:
+				logger.info("Duplicate scheduled transaction found: %s (dedupe string: %s). Skipping..." % (description, dedupe))
+				return
+
+			session.add(txn)
+			session.commit()
+			txn = session.get(RecurringTransaction, txn.id)
+			logger.info(f"Scheduled new transaction: {txn}. Execution date: {get_next_occurrence_for_txn(txn)}")
 

@@ -59,7 +59,7 @@ def run_auto_processor(args):
 		mint.load_transactions_page()
 
 		if args.splitwise:
-			splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier)
+			splitwise = SplitwiseHelper(creds, mint, args.shorthand_json_path, args.splitwise_user_id_to_name_json, args.mint_custom_user_identifier, args.db)
 
 			# Process Splitwise expenses and add transactions to Mint
 			splitwise.process_splitwise_expenses(args.splitwise_days_to_look_back)

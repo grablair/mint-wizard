@@ -11,7 +11,7 @@ import util
 logger = logging.getLogger(__name__)
 
 class SplitwiseHelper:
-	def __init__(self, creds, mint, shorthand_json_path, user_id_to_name_json_path, mint_custom_user_identifier):
+	def __init__(self, creds, mint, shorthand_json_path, user_id_to_name_json_path, mint_custom_user_identifier, db):
 		self.mint = mint
 		self.mint_custom_user_identifier = mint_custom_user_identifier
 
@@ -21,6 +21,7 @@ class SplitwiseHelper:
 		self.my_friends = self.splitwise.getFriends()
 		self.user_id_to_name_overrides = {int(k):v for k,v in json.load(open(user_id_to_name_json_path)).items()} if user_id_to_name_json_path else {}
 		self.shorthands_to_categories = json.load(open(shorthand_json_path))
+		self.db = db
 
 	# Translates a Splitwise user ID to a name
 	def splitwise_user_id_to_name(self, user_id):
@@ -42,10 +43,12 @@ class SplitwiseHelper:
 
 		logger.info("%s expenses to process" % len(expenses))
 		for expense in expenses:
+			process_txn_func = self.mint.add_transaction
+
 			charge_modifier_used = False
 
 			description = expense.getDescription()
-			stripped_description = re.sub(r'\b[MU][A-Z]*:[A-Z]+\b', '', description).strip()
+			stripped_description = re.sub(r'\b[MUD][A-Z]*:[A-Z0-9]+\b', '', description).strip()
 			
 			my_expense_user = next(user for user in expense.getUsers() if user.getId() == self.my_user_id)
 			expense_date = datetime.strptime(expense.getCreatedAt(), "%Y-%m-%dT%H:%M:%S%z")
@@ -55,6 +58,25 @@ class SplitwiseHelper:
 			if shorthand_match and len(shorthand_match) > 1:
 				logger.error("Found more than one shorthand match for Mint in a Splitwise Transaction. Skipping... Description: {}; Matches: {}".format(description, shorthand_match))
 				continue
+
+			# now, let's see if the delay tag is also present
+			delay_match = re.findall(r'\bD:[0-9]+\b', description)
+			if delay_match:
+				# The "Delay" modifier has been used for this transaction. Let's extract the
+				# number of days to delay from the delay tag
+				if len(delay_match) > 1:
+					logger.error("Found more than one section for the transaction delay tag. Skipping... Description: {}; Matches: {}".format(description, delay_match))
+					continue
+
+				# extract days
+				delay_days = int(delay_match[0].split(":")[1])
+				expense_date += timedelta(days=delay_days)
+
+				# override the transaction processing function
+				process_txn_func = self.db.schedule_single_transaction
+
+				logger.info(f"Delay modifier found for transaction. Description: {stripped_description}; Days: {delay_days}; New Date: {expense_date}")
+
 
 			if shorthand_match and shorthand_match[0].split(":")[1] in self.shorthands_to_categories:
 				# shorthand found
@@ -70,29 +92,19 @@ class SplitwiseHelper:
 							# behave this way allows the software to be idempotent. If someone edits
 							# an expense that has already been processed to include this flag, we
 							# want to ensure that only the charge component has been added, since
-							# the main component already has been added. 
+							# the main component already has been added.
 							charge_modifier_used = True
 							logger.info("Processing Splitwise CHARGE Transaction. Description: {}; Category: {}; Amount: {}".format(stripped_description, category, -Decimal(my_expense_user.getPaidShare())))
-							self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
-			elif shorthand_match:
-				logger.error(f"Shorthand found in expense, but there is no category mapped to it! Expense: {description}")
-				continue
+
+							txn_desc = "Splitwise: {}".format(stripped_description)
+							dedupe = "SPLIT:CHARGE{}".format(expense.getId())
+							amount = -Decimal(my_expense_user.getPaidShare())
+
+							process_txn_func(txn_desc, amount, category, expense_date, dedupe)
 			else:
-				# otherwise look for a JSON object
-				first_bracket = stripped_description.find("{")
-				last_bracket = len(stripped_description) - stripped_description[::-1].find("}")
-				
-				if first_bracket == -1 or last_bracket == -1:
-					continue
-				
-				json_string = stripped_description[first_bracket:last_bracket]
-				desc_data = json.loads(json_string)
-
-				if 'mint_category' not in desc_data:
-					continue
-
-				category = desc_data['mint_category']
-				stripped_description = stripped_description[0:first_bracket].strip()
+				if shorthand_match:
+					logger.error(f"Shorthand found in expense, but there is no category mapped to it! Expense: {description}")
+				continue
 
 			# Process user-specific flags
 			if self.mint_custom_user_identifier:
@@ -103,10 +115,15 @@ class SplitwiseHelper:
 					for modifier in modifiers:
 						match modifier:
 							case 'C':
-								if not global_charge_modifier_used:
+								if not charge_modifier_used:
 									charge_modifier_used = True
 									logger.info("Processing Splitwise CHARGE Transaction. Description: {}; Category: {}; Amount: {}".format(stripped_description, category, -Decimal(my_expense_user.getPaidShare())))
-									self.mint.add_transaction("Splitwise: {}".format(stripped_description), -Decimal(my_expense_user.getPaidShare()), category, expense_date, "SPLIT:CHARGE{}".format(expense.getId()))
+
+									txn_desc = "Splitwise: {}".format(stripped_description)
+									dedupe = "SPLIT:CHARGE{}".format(expense.getId())
+									amount = -Decimal(my_expense_user.getPaidShare())
+
+									process_txn_func(txn_desc, amount, category, expense_date, dedupe)
 
 			amount_owed_to_me = Decimal(my_expense_user.getPaidShare()) - Decimal(my_expense_user.getOwedShare())
 			if amount_owed_to_me == 0:
@@ -128,4 +145,10 @@ class SplitwiseHelper:
 				"Extra Charge Transaction Needed: {}; ".format(-Decimal(my_expense_user.getPaidShare())) if charge_modifier_used else "", 
 				notes_array))
 			
-			self.mint.add_transaction("Splitwise: {}".format(stripped_description), amount_owed_to_me, category, expense_date, "SPLIT:{}".format(expense.getId()), notes="\n".join(notes_array))
+			process_txn_func(
+				"Splitwise: {}".format(stripped_description),
+				amount_owed_to_me,
+				category,
+				expense_date,
+				"SPLIT:{}".format(expense.getId()),
+				notes="\n".join(notes_array))
