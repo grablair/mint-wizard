@@ -133,7 +133,7 @@
 	"TAXES": "Taxes",
 		"FEDTAX": "Federal Tax",
 		"STATETAX": "State Tax",
-		"LOCTAC": "Local Tax",
+		"LOCTAX": "Local Tax",
 		"SALESTAX": "Sales Tax",
 		"PROPTAX": "Property Tax",
 

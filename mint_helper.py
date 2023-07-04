@@ -289,7 +289,7 @@ class MintHelper:
 	def recategorize_target_transactions(self, pattern_configs):
 		logger.info("Starting to recategorize target transactions by pattern")
 
-		self.wait_for_transaction_table()
+		self.wait_for_transaction_table(hide_autoprocessed=True)
 
 		for pattern, category, new_description in pattern_configs:
 			logger.info("Processing pattern /%s/; recategorizing matches to \"%s\" with new description \"%s\"" % (pattern, category, new_description))
