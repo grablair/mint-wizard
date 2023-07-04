@@ -51,7 +51,7 @@ class SplitwiseHelper:
 			stripped_description = re.sub(r'\b[MUD][A-Z]*:[A-Z0-9]+\b', '', description).strip()
 			
 			my_expense_user = next(user for user in expense.getUsers() if user.getId() == self.my_user_id)
-			expense_date = datetime.strptime(expense.getCreatedAt(), "%Y-%m-%dT%H:%M:%S%z")
+			expense_date = datetime.strptime(expense.getDate(), "%Y-%m-%dT%H:%M:%S%z")
 
 			# first, check for shorthands
 			shorthand_match = re.findall(r'\bM[A-Z]*:[A-Z]+\b', description)
