@@ -114,7 +114,8 @@ class Db:
 
 		with Session(self.engine) as session:
 			for txn in session.scalars(stmt).all():
-				if "until" in txn.recurring_event.get_params() and list(rrule.rrulestr(rrule_for_txn(txn)))[-1] == txn.previous_occurrence:
+				rules = rrule.rrulestr(rrule_for_txn(txn))
+				if not rules.after(txn.previous_occurrence):
 					# if there is an end date, and if the final occurrence is equal to the previous one
 					logger.info("Cleaning up expired recurring transaction %s" % txn)
 					session.delete(txn)
