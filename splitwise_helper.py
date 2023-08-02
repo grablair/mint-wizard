@@ -60,7 +60,7 @@ class SplitwiseHelper:
 				continue
 
 			# now, let's see if the delay tag is also present
-			delay_match = re.findall(r'\bD:[0-9]+\b', description)
+			delay_match = re.findall(r'\bD[A-Z]*:[0-9]+\b'.format(self.mint_custom_user_identifier), description)
 			if delay_match:
 				# The "Delay" modifier has been used for this transaction. Let's extract the
 				# number of days to delay from the delay tag
@@ -68,15 +68,17 @@ class SplitwiseHelper:
 					logger.error("Found more than one section for the transaction delay tag. Skipping... Description: {}; Matches: {}".format(description, delay_match))
 					continue
 
-				# extract days
-				delay_days = int(delay_match[0].split(":")[1])
-				expense_date += timedelta(days=delay_days)
+				# extract tag; check if the tag is for the current user (or every user)
+				tag = delay_match[0].split(":")[0]
+				if len(tag) == 1 or tag[1:] == self.mint_custom_user_identifier:
+					# extract days
+					delay_days = int(delay_match[0].split(":")[1])
+					expense_date += timedelta(days=delay_days)
 
-				# override the transaction processing function
-				process_txn_func = self.db.schedule_single_transaction
+					# override the transaction processing function
+					process_txn_func = self.db.schedule_single_transaction
 
-				logger.info(f"Delay modifier found for transaction. Description: {stripped_description}; Days: {delay_days}; New Date: {expense_date}")
-
+					logger.info(f"Delay modifier found for transaction. Description: {stripped_description}; Days: {delay_days}; New Date: {expense_date}")
 
 			if shorthand_match and shorthand_match[0].split(":")[1] in self.shorthands_to_categories:
 				# shorthand found

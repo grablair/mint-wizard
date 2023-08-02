@@ -63,11 +63,14 @@ many days are specified.
 It is expected that the flag be in the following format:
 
 ```
-D:<days-to-delay-integer>
+D[user-identifier]:<days-to-delay-integer>
 ```
 
 This is useful in situations where you want to collect money now for an expense that is
 going to occur in future.
+
+You can specify a User-Identifier here that will work the same way as the custom user
+specific mint transaction flags in the next section
 
 Example of a usecase:
 
