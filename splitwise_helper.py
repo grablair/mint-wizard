@@ -43,6 +43,10 @@ class SplitwiseHelper:
 
 		logger.info("%s expenses to process" % len(expenses))
 		for expense in expenses:
+			# skip if the transaction is deleted
+			if expense.getDeletedAt():
+				continue
+
 			process_txn_func = self.mint.add_transaction
 
 			charge_modifier_used = False
