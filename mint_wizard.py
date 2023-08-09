@@ -35,7 +35,35 @@ def list_recurring_txns(args):
 
 def add_recurring_txn(args):
 	logger.info("Adding recurring transaction")
-	args.db.create_recurring_transaction(args.description, args.amount, args.category, args.recurring_event)
+
+	description = args.description
+	shorthands = json.load(open(args.shorthand_json_path))
+
+	# check for category validity
+	if args.category in shorthands.values():
+		category = args.category
+	elif args.category in shorthands.keys():
+		category = shorthands[args.category]
+	else:
+		logger.error(f"ERROR: Given category {args.category} not a valid shorthand or Mint category.")
+		sys.exit(1)
+
+	if args.move_from_category:
+		# check for category validity
+		if args.move_from_category in shorthands.values():
+			move_from_category = args.move_from_category
+		elif args.move_from_category in shorthands.keys():
+			move_from_category = shorthands[args.move_from_category]
+		else:
+			logger.error(f"ERROR: Given MOVE FROM category {args.move_from_category} not a valid shorthand or Mint category.")
+			sys.exit(1)
+
+		logger.info(f"Creating a MOVE from \"{move_from_category}\" to \"{category}\"")
+
+		description = f"{description} (move from \"{move_from_category}\")"
+		args.db.create_recurring_transaction(f"{args.description} (move to \"{category}\")", str(-float(args.amount)), move_from_category, args.recurring_event)
+
+	args.db.create_recurring_transaction(description, args.amount, category, args.recurring_event)
 
 def remove_recurring_txn(args):
 	logger.info("Removing recurring transaction")
@@ -114,6 +142,8 @@ if __name__ == "__main__":
 	add_recurring_txn_parser.add_argument("-a", "--amount", help="Amount of the transaction. Negative numbers are charges, positive numbers are credits", required=True)
 	add_recurring_txn_parser.add_argument("-c", "--category", help="Mint category for the transaction", required=True)
 	add_recurring_txn_parser.add_argument("-r", "--recurrence-rule", help="Natural language representation of a recurring event. Can include start dates and end dates, but they are not required. Ex: \"every 2 weeks starting next monday until jan\", \"every day\"", dest="recurring_event", required=True, type=util.str_to_valid_recurring_event)
+	add_recurring_txn_parser.add_argument("-short", "--shorthand-json-path", help="The path to the file containing the mapping of shorthand identifiers to mint categories", default=f"{mint_wizard_dir}/shorthands.json")
+	add_recurring_txn_parser.add_argument("-mc", "--move-from-category", help="Mint category to move the transaction FROM. This will create two recurring transactions: one credit to the FROM category, and one charge to the -c category")
 	add_recurring_txn_parser.set_defaults(func=add_recurring_txn)
 
 	remove_recurring_txn_parser = recurring_transactions_subparsers.add_parser("remove", help="Remove a recurring transaction")

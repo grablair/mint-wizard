@@ -1,3 +1,53 @@
+## Recurring Transactions
+
+You can create recurring transactions, using natural language to specify the
+frequency of recurrence.
+
+### Add Recurring Transaction
+
+To add a recurring transaction, run:
+
+```
+mint-wizard.py recurring-txns \
+    -d <description> \
+    -a <amount (negative for a charge)> \
+    -c <category (full or shorthand)> \
+    -r <natural-language-recurrence-rule> \
+    [-mc <move-from-category>] \
+    [-short <shorthand-mapping-file-override>]
+```
+
+The `-r / --recurrence-rule` argument is a natural language representation of a
+recurring event. Some examples are "every 2 weeks starting next monday until jan",
+"every day", and "10th of every month at 12am starting Aug 9, 2023".
+
+The `-mc / --move-from-category` argument allows for easy moving from one category
+to another. For example, if you specify `-a "-100"` `-c Entertainment` and
+`-mc "Electronics & Software"`, two recurrence rules will be created. One that is
+in the category `Entertainment` for the specified `-100` and one in the
+`Electronics & Software` category, for `100`, the inverse. This effectively "moves"
+$100 from `Electronics & Software` to `Entertainment`.
+
+The `-short` argument allows you to override the path to the shorthands mapping file.
+
+### List Recurring Transactions
+
+To list all recurring transactions, run:
+
+```
+mint-wizard.py recurring-txns list
+```
+
+### Remove Recurring Transaction
+
+To remove a recurring transaction, run:
+
+```
+mint-wizard.py recurring-txns remove -id <recurring-txn-id>
+```
+
+You can obtain the ID of a recurring transaction from the `recurring-txns list` command.
+
 ## Splitwise Description Flags
 
 ### Mint Transaction Flag
@@ -58,7 +108,8 @@ always one capital letter each. They are described below:
 ### Delay Action Flag
 
 Adding this flag will delay the action on the given Splitwise transaction by however
-many days are specified.
+many days are specified. It does this by scheduling a one-time "recurring" transaction
+for the target day.
 
 It is expected that the flag be in the following format:
 
