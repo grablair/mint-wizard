@@ -91,7 +91,7 @@ class MintHelper:
 		try:
 			# Try and see if the transaction table shows up
 			self.wait_for_transaction_table(timeout=10)
-		except TimeoutException:
+		except:
 			# Assume we are on the login screen, then
 
 			try:
