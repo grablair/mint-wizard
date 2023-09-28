@@ -111,6 +111,8 @@ class MintHelper:
 					.send_keys(pyotp.TOTP(self.creds['mint']['totp_secret']).now())
 				self.get_elem_by_css('[data-testid="VerifySoftTokenSubmitButton"]').click()
 
+			self.wait_for_transaction_table()
+
 	def center_elem(self, elem):
 		if elem:
 			self.driver.execute_script('arguments[0].scrollIntoView({block: "center"});', elem)
@@ -253,6 +255,8 @@ class MintHelper:
 		if self.get_elems_by_description(dedupe):
 			logger.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
 			return
+
+		time.sleep(2000)
 
 		logger.info("Adding transaction for \"%s\" with price $%s and category \"%s\"" % (desc, price, category))
 
