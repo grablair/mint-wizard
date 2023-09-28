@@ -256,8 +256,6 @@ class MintHelper:
 			logger.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
 			return
 
-		time.sleep(2000)
-
 		logger.info("Adding transaction for \"%s\" with price $%s and category \"%s\"" % (desc, price, category))
 
 		self.clear_search_filters()
