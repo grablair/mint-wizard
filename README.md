@@ -168,9 +168,9 @@ for the current user.
 	                  Alice |  Bob | Charles
 	CC Charge:        -$50  |  $0  |  $0
 	Script Deb/Cre:   +$30  | -$10 | -$20
-        Extra Charge:      $0   | -$10 |  $0
-        ----------------------------------------
-        Result:           -$20  | -$20 | -$20
+	Extra Charge:      $0   | -$10 |  $0
+	----------------------------------------
+ 	Result:           -$20  | -$20 | -$20
 	```
 
 	If they didn't include the `UBOB:C` flag, or if Bob didn't specify 
