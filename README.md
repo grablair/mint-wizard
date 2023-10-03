@@ -1,54 +1,29 @@
-## Recurring Transactions
+# Mint Wizard
 
-You can create recurring transactions, using natural language to specify the
-frequency of recurrence.
+Mint Wizard provides several features that can be used to programmatically access
+and modify data in your Mint account.
 
-### Add Recurring Transaction
+The primary feature of Mint Wizard integrates Mint with
+[Splitwise](https://splitwise.com), so your expenses on Splitwise can be
+auto-imported into Mint, without needing to manually split transactions in Mint
+later. 
 
-To add a recurring transaction, run:
+It also allows you set up recurring transactions in Mint, using the CLI.
 
-```
-mint-wizard.py recurring-txns \
-    -d <description> \
-    -a <amount (negative for a charge)> \
-    -c <category (full or shorthand)> \
-    -r <natural-language-recurrence-rule> \
-    [-mc <move-from-category>] \
-    [-short <shorthand-mapping-file-override>]
-```
+It also allows you to recategorize transactions based on a regex pattern of the
+transaction's description.
 
-The `-r / --recurrence-rule` argument is a natural language representation of a
-recurring event. Some examples are "every 2 weeks starting next monday until jan",
-"every day", and "10th of every month at 12am starting Aug 9, 2023".
+It uses Selenium to simulate actual browser actions on the Mint website, as the
+Mint API is closed-source.
 
-The `-mc / --move-from-category` argument allows for easy moving from one category
-to another. For example, if you specify `-a "-100"` `-c Entertainment` and
-`-mc "Electronics & Software"`, two recurrence rules will be created. One that is
-in the category `Entertainment` for the specified `-100` and one in the
-`Electronics & Software` category, for `100`, the inverse. This effectively "moves"
-$100 from `Electronics & Software` to `Entertainment`.
+Also helpful for Mint QoL improvements is my [Mint Helper userscript](https://gist.github.com/grablair/8f83e2916b815e24d67bd49fd43158f6).
+Information on it's features can be found in the [userscript](#mint-helper-userscript)
+section below.
 
-The `-short` argument allows you to override the path to the shorthands mapping file.
+## Splitwise Integration
 
-### List Recurring Transactions
-
-To list all recurring transactions, run:
-
-```
-mint-wizard.py recurring-txns list
-```
-
-### Remove Recurring Transaction
-
-To remove a recurring transaction, run:
-
-```
-mint-wizard.py recurring-txns remove -id <recurring-txn-id>
-```
-
-You can obtain the ID of a recurring transaction from the `recurring-txns list` command.
-
-## Splitwise Description Flags
+Splitwise integration works by adding certain flags to the end of your Splitwise
+expense descriptions.
 
 ### Mint Transaction Flag
 
@@ -193,9 +168,9 @@ for the current user.
 	                  Alice |  Bob | Charles
 	CC Charge:        -$50  |  $0  |  $0
 	Script Deb/Cre:   +$30  | -$10 | -$20
-    Extra Charge:      $0   | -$10 |  $0
-    ----------------------------------------
-    Result:           -$20  | -$20 | -$20
+        Extra Charge:      $0   | -$10 |  $0
+        ----------------------------------------
+        Result:           -$20  | -$20 | -$20
 	```
 
 	If they didn't include the `UBOB:C` flag, or if Bob didn't specify 
@@ -206,3 +181,86 @@ for the current user.
 	If they simply used the global `C` flag, Alice would have the $50 credit card charge,
 	_another_ $50 automated charge would be added by the script, and then a $30 credit,
 	resulting in $70 being tracked in Mint.
+
+## Recurring Transactions
+
+You can create recurring transactions, using natural language to specify the
+frequency of recurrence.
+
+### Add Recurring Transaction
+
+To add a recurring transaction, run:
+
+```
+mint-wizard.py recurring-txns \
+    -d <description> \
+    -a <amount (negative for a charge)> \
+    -c <category (full or shorthand)> \
+    -r <natural-language-recurrence-rule> \
+    [-mc <move-from-category>] \
+    [-short <shorthand-mapping-file-override>]
+```
+
+The `-r / --recurrence-rule` argument is a natural language representation of a
+recurring event. Some examples are "every 2 weeks starting next monday until jan",
+"every day", and "10th of every month at 12am starting Aug 9, 2023".
+
+The `-mc / --move-from-category` argument allows for easy moving from one category
+to another. For example, if you specify `-a "-100"` `-c Entertainment` and
+`-mc "Electronics & Software"`, two recurrence rules will be created. One that is
+in the category `Entertainment` for the specified `-100` and one in the
+`Electronics & Software` category, for `100`, the inverse. This effectively "moves"
+$100 from `Electronics & Software` to `Entertainment`.
+
+The `-short` argument allows you to override the path to the shorthands mapping file.
+
+### List Recurring Transactions
+
+To list all recurring transactions, run:
+
+```
+mint-wizard.py recurring-txns list
+```
+
+### Remove Recurring Transaction
+
+To remove a recurring transaction, run:
+
+```
+mint-wizard.py recurring-txns remove -id <recurring-txn-id>
+```
+
+You can obtain the ID of a recurring transaction from the `recurring-txns list` command.
+
+## Recategorization
+
+Recategorization rules can be added to the [config file](config.json). The are configured
+like the following:
+
+```
+{
+	"patterns_to_recategorize": [
+		["<description-regex>", "<new-category>", "<new-description>"],
+		["^Frankie and Jos.* ", "Fast Food", "Frankie and Jo's Ice Cream"] // example
+	]
+}
+```
+
+## Mint Helper Userscript
+
+The [Mint Helper userscript](https://gist.github.com/grablair/8f83e2916b815e24d67bd49fd43158f6)
+can be installed via the Greasemonkey or Tampermonkey browser extensions. It has only been
+tested on Chrome using Tampermonkey.
+
+It's features are:
+
+1. A revamped Budgets view, including:
+   1. Reordering of budgets
+   2. Creation of custom dividers, which can also be ordered
+   3. Auto-hiding of budgets that are "complete" (either has $1 or $0 left, or is a
+     "set-aside" budget for the month)
+2. Replacement of the dumb overview budgets view with a full budgets view (so you really
+   only need to look at the overview to get the full picture)
+3. Auto-hiding of transactions with $0 values
+4. Auto-removal of all "offers" (that aren't technically ads and don't get caught by
+   the various ad-blocking extensions)
