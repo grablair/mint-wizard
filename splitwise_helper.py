@@ -11,9 +11,9 @@ import util
 logger = logging.getLogger(__name__)
 
 class SplitwiseHelper:
-	def __init__(self, creds, mint, shorthand_json_path, user_id_to_name_json_path, mint_custom_user_identifier, db):
-		self.mint = mint
-		self.mint_custom_user_identifier = mint_custom_user_identifier
+	def __init__(self, creds, budgeting_app, shorthand_json_path, user_id_to_name_json_path, custom_user_identifier, db):
+		self.budgeting_app = budgeting_app
+		self.custom_user_identifier = custom_user_identifier
 
 		self.splitwise = Splitwise(creds['splitwise']['consumer_key'],creds['splitwise']['secret_key'],api_key=creds['splitwise']['api_key'])
 
@@ -47,7 +47,7 @@ class SplitwiseHelper:
 			if expense.getDeletedAt():
 				continue
 
-			process_txn_func = self.mint.add_transaction
+			process_txn_func = self.budgeting_app.add_transaction
 
 			charge_modifier_used = False
 
@@ -60,11 +60,11 @@ class SplitwiseHelper:
 			# first, check for shorthands
 			shorthand_match = re.findall(r'\bM[A-Z]*:[A-Z]+\b', description)
 			if shorthand_match and len(shorthand_match) > 1:
-				logger.error("Found more than one shorthand match for Mint in a Splitwise Transaction. Skipping... Description: {}; Matches: {}".format(description, shorthand_match))
+				logger.error("Found more than one catergory shorthand match in a Splitwise Transaction. Skipping... Description: {}; Matches: {}".format(description, shorthand_match))
 				continue
 
 			# now, let's see if the delay tag is also present
-			delay_match = re.findall(r'\bD[A-Z]*:[0-9]+\b'.format(self.mint_custom_user_identifier), description)
+			delay_match = re.findall(r'\bD[A-Z]*:[0-9]+\b'.format(self.custom_user_identifier), description)
 			if delay_match:
 				# The "Delay" modifier has been used for this transaction. Let's extract the
 				# number of days to delay from the delay tag
@@ -74,7 +74,7 @@ class SplitwiseHelper:
 
 				# extract tag; check if the tag is for the current user (or every user)
 				tag = delay_match[0].split(":")[0]
-				if len(tag) == 1 or tag[1:] == self.mint_custom_user_identifier:
+				if len(tag) == 1 or tag[1:] == self.custom_user_identifier:
 					# extract days
 					delay_days = int(delay_match[0].split(":")[1])
 					expense_date += timedelta(days=delay_days)
@@ -93,8 +93,8 @@ class SplitwiseHelper:
 				for modifier in shorthand_parts[0][1:]:
 					match modifier:
 						case 'C':
-							# Add charge to current user's mint for the amount they paid, as well
-							# Technically this could be rolled into one transaction, but having it
+							# Add charge to current user's budgeting app for the amount they paid, as
+							# well. Technically this could be rolled into one transaction, but having it
 							# behave this way allows the software to be idempotent. If someone edits
 							# an expense that has already been processed to include this flag, we
 							# want to ensure that only the charge component has been added, since
@@ -113,8 +113,8 @@ class SplitwiseHelper:
 				continue
 
 			# Process user-specific flags
-			if self.mint_custom_user_identifier:
-				user_flag_match = re.search(r'\bU{}:[A-Z]+\b'.format(self.mint_custom_user_identifier), description)
+			if self.custom_user_identifier:
+				user_flag_match = re.search(r'\bU{}:[A-Z]+\b'.format(self.custom_user_identifier), description)
 				if user_flag_match:
 					user_flag = user_flag_match[0]
 					modifiers = user_flag.split(":")[1]
@@ -152,7 +152,7 @@ class SplitwiseHelper:
 				notes_array))
 			
 			process_txn_func(
-				"Splitwise: {}".format(stripped_description),
+				"SW: {}".format(stripped_description),
 				amount_owed_to_me,
 				category,
 				expense_date,
