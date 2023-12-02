@@ -68,7 +68,7 @@ class MonarchMoneyHelper:
         if price == 0:
             return
 
-        dedupe_results = asyncio.run(self.mm.get_transactions(search = dedupe, has_notes=True))
+        dedupe_results = asyncio.run(self.mm.get_transactions(search = dedupe))
         if dedupe_results['allTransactions']['totalCount'] > 0:
             logger.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
             return
