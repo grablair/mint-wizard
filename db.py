@@ -138,7 +138,7 @@ class Db:
 		now = datetime.now(tz=timezone.utc)
 
 		if now > txn_date:
-			logger.error(f"Invalid date for scheduling a transaction; the date must be in the past. Skipping. now: {now}; txn_date: {txn_date}")
+			logger.error(f"Invalid date for scheduling a transaction; the transaction date must be in the future. Skipping. now: {now}; txn_date: {txn_date}")
 			return
 
 		rr = normalize_rfc_rule(rrule.rrule(
