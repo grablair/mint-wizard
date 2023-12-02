@@ -102,7 +102,7 @@ class SplitwiseHelper:
 							charge_modifier_used = True
 							logger.info("Processing Splitwise CHARGE Transaction. Description: {}; Category: {}; Amount: {}".format(stripped_description, category, -Decimal(my_expense_user.getPaidShare())))
 
-							txn_desc = "Splitwise: {}".format(stripped_description)
+							txn_desc = "SW: {}".format(stripped_description)
 							dedupe = "SPLIT:CHARGE{}".format(expense.getId())
 							amount = -Decimal(my_expense_user.getPaidShare())
 
@@ -125,7 +125,7 @@ class SplitwiseHelper:
 									charge_modifier_used = True
 									logger.info("Processing Splitwise CHARGE Transaction. Description: {}; Category: {}; Amount: {}".format(stripped_description, category, -Decimal(my_expense_user.getPaidShare())))
 
-									txn_desc = "Splitwise: {}".format(stripped_description)
+									txn_desc = "SW: {}".format(stripped_description)
 									dedupe = "SPLIT:CHARGE{}".format(expense.getId())
 									amount = -Decimal(my_expense_user.getPaidShare())
 
