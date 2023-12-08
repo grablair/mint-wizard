@@ -22,6 +22,7 @@ class MonarchMoneyHelper:
         try:
             asyncio.run(self.mm.login(creds['mm']['email'], creds['mm']['password']))
         except RequireMFAException:
+            logger.debug("Providing TOTP...")
             asyncio.run(self.mm.multi_factor_authenticate(
                 creds['mm']['email'], creds['mm']['password'], pyotp.TOTP(creds['mm']['totp_secret']).now()
             ))
@@ -40,6 +41,8 @@ class MonarchMoneyHelper:
             sys.exit(1)
         else:
             self.automated_account_id = filtered_accounts[0]['id']
+
+        logger.debug(f"'Automated Transactions' account fetched: {filtered_accounts[0]}")
 
         # Set up the category map
         logger.info("Fetching categories and setting up category -> id map...")
@@ -67,6 +70,8 @@ class MonarchMoneyHelper:
             sys.exit(1)
         else:
             self.autoprocessed_tag_id = filtered_tags[0]['id']
+
+        logger.debug(f"AUTOPROCESSED tag fetched: {filtered_tags[0]}")
 
     def add_transaction(self, desc, price, category, date, dedupe, notes=""):
         price = Decimal(price)
