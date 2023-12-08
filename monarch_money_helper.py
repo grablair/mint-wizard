@@ -18,6 +18,7 @@ class MonarchMoneyHelper:
         self.mm = MonarchMoney(session_file = session_file)
 
         # login
+        logger.info("Logging in...")
         try:
             asyncio.run(self.mm.login(creds['mm']['email'], creds['mm']['password']))
         except RequireMFAException:
@@ -26,12 +27,14 @@ class MonarchMoneyHelper:
             ))
 
         # Set up "Automated Transactions" account, if not present
+        logger.info("Fetching 'Automated Transactions' dummy account...")
         result = asyncio.run(self.mm.get_accounts())
         filtered_accounts = list(filter(lambda x: x['displayName'] == "Automated Transactions", result['accounts']))
 
         if len(filtered_accounts) == 0:
-            pass
-            # TODO: set up account
+            # TODO: set up account automatically
+            logger.error("No 'Automated Transactions' dummy account exists. Please create one.")
+            sys.exit(1)
         elif len(filtered_accounts) > 1:
             logger.error("More than one account exists with the name 'Automated Transactions'. Please rename extra accounts with that name.")
             sys.exit(1)
@@ -39,6 +42,7 @@ class MonarchMoneyHelper:
             self.automated_account_id = filtered_accounts[0]['id']
 
         # Set up the category map
+        logger.info("Fetching categories and setting up category -> id map...")
         self.category_map = {}
         result = asyncio.run(self.mm.get_transaction_categories())
         for category in result['categories']:
@@ -47,15 +51,17 @@ class MonarchMoneyHelper:
             
             self.category_map[category['name']] = category['id']
 
-        logger.info(f"Categories fetched: {self.category_map}")
+        logger.debug(f"Categories fetched: {self.category_map}")
 
         # Set up the required tag(s), if not yet created
+        logger.info("Fetching 'AUTOPROCESSED' tag...")
         result = asyncio.run(self.mm.get_transaction_tags())
         filtered_tags = list(filter(lambda tag: tag['name'] == "AUTOPROCESSED", result['householdTransactionTags']))
 
         if len(filtered_tags) == 0:
-            # TODO: set up 
-            pass
+            # TODO: set up tag automatically
+            logger.error("No 'Automated Transactions' dummy account exists. Please create one.")
+            sys.exit(1)
         elif len(filtered_tags) > 1:
             logger.error("More than one tag exists with the name 'AUTOPROCESSED'. Please rename extra tags with that name.")
             sys.exit(1)
@@ -90,47 +96,18 @@ class MonarchMoneyHelper:
 
     def recategorize_txn(self, txn, category, description=False, set_as_autoprocessed=True):
         raise NotImplementedError
-        self.hide_account_status_bar()
-        self.get_elem_by_automation_id('EDIT_TRANSACTION_LINK', elem=txn).click()
-
-        if description:
-            current_description = self.get_elem_by_automation_id('ADD_TRANSACTIONS_DESCRIPTION').get_attribute("value")
-            
-            clear_text = ""
-            for i in range(len(current_description)):
-                clear_text = clear_text + Keys.BACKSPACE
-
-            self.get_elem_by_automation_id('ADD_TRANSACTIONS_DESCRIPTION').send_keys(clear_text)
-            self.get_elem_by_automation_id('ADD_TRANSACTIONS_DESCRIPTION').send_keys("{} ({})".format(description, current_description))
-
-
-        self.fill_category_dropdown(category)
-
-        if set_as_autoprocessed:
-            self.get_elem_by_automation_id('SELECT_A_TAG').click()
-            self.get_elem_by_automation_id('TAG_CHOICE_AUTOPROCESSED').click()
-
-        self.driver.execute_script('arguments[0].scrollIntoView({block: "center"});', self.get_elem_by_automation_id('SAVE'))
-
-        self.get_elem_by_automation_id('SAVE').click()
-        self.wait_for_edit_txn_to_close()
 
     def tag_txn(self, txn, tag):
         raise NotImplementedError
-        self.get_elem_by_automation_id('EDIT_TRANSACTION_LINK').click()
-        self.get_elem_by_automation_id('SELECT_A_TAG').click()
-        self.get_elem_by_automation_id('TAG_CHOICE_{}'.format(tag)).click()
-        self.get_elem_by_automation_id('SAVE').click()
-        self.wait_for_edit_txn_to_close()
 
 
     def recategorize_all_txns(self, txns, category, set_as_autoprocessed=True):
-        raise NotImplementedError
         for txn in txns:
             self.recategorize_txn(txn, category, set_as_autoprocessed)
 
 
     def get_txn_statement_name(self, txn):
+        raise NotImplementedError
         return txn.get_attribute("title")[len("Statement Name: "):]
 
     def recategorize_target_transactions(self, pattern_configs):
