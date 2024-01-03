@@ -101,13 +101,13 @@ class Db:
 			session.commit()
 			logger.info("Removed recurring transaction")
 
-	def get_past_due_recurring_transactions(self):
-		def is_next_recurrence_before_now(txn):
+	def get_past_due_recurring_transactions(self, exclude_ids=set()):
+		def txn_filter(txn):
 			rules = rrule.rrulestr(rrule_for_txn(txn))
-			return rules.after(txn.previous_occurrence) < datetime.now()
+			return rules.after(txn.previous_occurrence) < datetime.now() and txn.id not in exclude_ids
 
 		self.clean_up_expired_recurring_transactions()
-		return list(filter(is_next_recurrence_before_now, self.get_all_recurring_transactions()))
+		return list(filter(txn_filter, self.get_all_recurring_transactions()))
 
 	def clean_up_expired_recurring_transactions(self):
 		stmt = select(RecurringTransaction)

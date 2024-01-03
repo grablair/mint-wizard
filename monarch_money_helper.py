@@ -149,6 +149,7 @@ class MonarchMoneyHelper:
 
         txns = self.db.get_past_due_recurring_transactions()
         logger.info("%s recurring transactions to process in first iteration" % len(txns))
+        skipped_ids = set()
         while txns:
             for txn in txns:
                 logger.info("Creating transaction for \"%s\"" % txn)
@@ -157,5 +158,8 @@ class MonarchMoneyHelper:
                 if self.add_transaction(txn.description, txn.amount, txn.category, next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, next_occurrence.isoformat()), notes=txn.notes):
                     # only run the completion logic if the transaction now exists
                     self.db.process_recurring_transaction_completion(txn.id)
-            txns = self.db.get_past_due_recurring_transactions()
+                else:
+                    skipped_ids.add(txn.id)
+
+            txns = self.db.get_past_due_recurring_transactions(exclude_ids=skipped_ids)
             logger.info("%s recurring transactions to process in next iteration" % len(txns))
