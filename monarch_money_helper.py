@@ -73,20 +73,22 @@ class MonarchMoneyHelper:
 
         logger.debug(f"AUTOPROCESSED tag fetched: {filtered_tags[0]}")
 
+    # returns True if a transaction either was created or already existed
     def add_transaction(self, desc, price, category, date, dedupe, notes=""):
         price = Decimal(price)
 
         if price == 0:
-            return
+            logger.warn("Given transaction %s has a value of 0. Skipping, and treating the transaction as created..." % (desc))
+            return True
 
         dedupe_results = asyncio.run(self.mm.get_transactions(search = dedupe))
         if dedupe_results['allTransactions']['totalCount'] > 0:
             logger.info("Duplicate found: %s (dedupe string: %s). Skipping..." % (desc, dedupe))
-            return
+            return True
 
         if category not in self.category_map:
             logger.error(f"Given category '{category}' does not exist in the user's account. Skipping...")
-            return
+            return False
 
         logger.info("Adding transaction for \"%s\" with price $%s and category \"%s\"" % (desc, price, category))
 
@@ -97,6 +99,8 @@ class MonarchMoneyHelper:
             f"{desc} | {dedupe}",
             self.category_map[category],
             notes))
+
+        return True
 
 
     def recategorize_txn(self, txn, category, description=False, set_as_autoprocessed=True):
@@ -150,7 +154,8 @@ class MonarchMoneyHelper:
                 logger.info("Creating transaction for \"%s\"" % txn)
 
                 next_occurrence = get_next_occurrence_for_txn(txn)
-                self.add_transaction(txn.description, txn.amount, txn.category, next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, next_occurrence.isoformat()), notes=txn.notes)
-                self.db.process_recurring_transaction_completion(txn.id)
+                if self.add_transaction(txn.description, txn.amount, txn.category, next_occurrence, "RECUR:%s:%s" % (txn.dedupe_string, next_occurrence.isoformat()), notes=txn.notes):
+                    # only run the completion logic if the transaction now exists
+                    self.db.process_recurring_transaction_completion(txn.id)
             txns = self.db.get_past_due_recurring_transactions()
             logger.info("%s recurring transactions to process in next iteration" % len(txns))
