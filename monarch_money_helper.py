@@ -188,4 +188,4 @@ class MonarchMoneyHelper:
         req = PreparedRequest()
         req.prepare_url(webhook, extra_params)
 
-        requests.get(req)
+        requests.get(req.url)
