@@ -2,6 +2,9 @@ import pyotp
 import sys
 import asyncio
 import logging
+import requests
+
+from requests.models import PreparedRequest
 
 from decimal import Decimal
 from db import get_next_occurrence_for_txn
@@ -163,3 +166,26 @@ class MonarchMoneyHelper:
 
             txns = self.db.get_past_due_recurring_transactions(exclude_ids=skipped_ids)
             logger.info("%s recurring transactions to process in next iteration" % len(txns))
+
+    def export_account_balances(self, webhook):
+        logger.info("Starting account balance export")
+
+        # fetch all account balances
+        accounts = asyncio.run(self.mm.get_accounts())
+        extra_params = {account['displayName']: account['currentBalance'] for account in accounts['accounts']}
+
+        # aggregate all cost basis for taxable brokerage accounts
+        brokerages = list(filter(lambda account: account['subtype']['display'] == "Brokerage (Taxable)" and not account['isHidden'], accounts['accounts']))
+        cost_basis = 0
+        for brokerage in brokerages:
+            holdings = asyncio.run(self.mm.get_account_holdings(brokerage['id']))
+            for holding in holdings['portfolio']['aggregateHoldings']['edges']:
+                cost_basis += holding['node']['basis']
+
+        extra_params['Taxable Cost Basis'] = cost_basis
+
+        # send the results to the given webhook
+        req = PreparedRequest()
+        req.prepare_url(webhook, extra_params)
+
+        requests.get(req)

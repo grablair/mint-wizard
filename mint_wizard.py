@@ -94,6 +94,10 @@ def run_auto_processor(args):
 			# Add any recurring transactions to Monarch Money
 			mm.process_recurring_transactions()
 
+		if "account_balance_export_webhook" in config :
+			# Export account balances to the given webhook
+			mm.export_account_balances(config["account_balance_export_webhook"])
+
 		logger.info("Splitwise-Budgeting auto-processing via Monarch Money complete!")
 	else:
 		if (args.remote is None) != (args.remote_url is None):
