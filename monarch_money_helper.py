@@ -105,6 +105,8 @@ class MonarchMoneyHelper:
 
         return True
 
+    def search_transactions(self, **kwargs):
+        return asyncio.run(self.mm.get_transactions(**kwargs))['allTransactions']['results']
 
     def recategorize_txn(self, txn, category, description=False, set_as_autoprocessed=True):
         raise NotImplementedError

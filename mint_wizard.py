@@ -84,6 +84,12 @@ def run_auto_processor(args):
 
 			# Process Splitwise expenses and add transactions to Monarch Money
 			splitwise.process_splitwise_expenses(args.splitwise_days_to_look_back)
+
+			if 'payment_import_rules' in config:
+				splitwise.import_payments_from_budgeting_app(config['payment_import_rules'])
+
+			if 'loans' in config:
+				splitwise.handle_personal_loans(config['loans'])
 		else:
 			logger.info("Skipping Splitwise processing, as instructed")
 

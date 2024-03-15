@@ -1,4 +1,6 @@
 from splitwise import Splitwise
+from splitwise.expense import Expense
+from splitwise.user import ExpenseUser
 from decimal import Decimal
 from datetime import datetime, timedelta, date
 import time
@@ -163,3 +165,128 @@ class SplitwiseHelper:
 				expense_date,
 				"SPLIT:{}".format(expense.getId()),
 				notes="\n".join(notes_array))
+
+	def import_payments_from_budgeting_app(self, rules):
+		logger.info("Processing payments from budgeting app")
+
+		for rule in rules:
+			user_id = rule['user_id']
+			txns = list(filter(lambda txn: "LOANPAYMENT" not in txn['merchant']['name'],
+				self.budgeting_app.search_transactions(search=rule['search_string'], limit=5)))
+
+
+			for txn in txns:
+				expenses = list(filter(lambda e: not e.getDeletedAt(), self.splitwise.getExpenses(
+					friend_id    = user_id,
+					dated_after  = (date.fromisoformat(txn['date']) - timedelta(days=1)).isoformat(),
+					dated_before = (date.fromisoformat(txn['date']) + timedelta(days=1)).isoformat())))
+
+				if not any(f"B:{txn['id']}" in e.getDescription() for e in expenses):
+					expense = Expense()
+					expense.setCost(txn['amount'])
+					expense.setDescription(f"Direct Payment B:{txn['id']}")
+					expense.setDate(txn['date'])
+
+					me = ExpenseUser()
+					me.setId(self.my_user_id)
+					me.setPaidShare('0.00')
+					me.setOwedShare(txn['amount'])
+
+					other = ExpenseUser()
+					other.setId(user_id)
+					other.setPaidShare(txn['amount'])
+					other.setOwedShare('0.00')
+
+					users = []
+					users.append(me)
+					users.append(other)
+
+					expense.setUsers(users)
+
+					logger.info(f"Creating Splitwise payment expense of ${txn['amount']} from {self.splitwise_user_id_to_name(user_id)} ({user_id}) on date {txn['date']}")
+
+					expense, errors = self.splitwise.createExpense(expense)
+
+					if errors:
+						logger.error(f"Error while creating payment expense: {errors}")
+					else:
+						logger.info(f"Payment expense created")
+
+	# processes personal loan interest charges, based on provided rates in the config
+	def handle_personal_loans(self, loans):
+		logger.info("Processing personal loan interest")
+		today = date.today()
+		start_of_prior_month = (today - timedelta(days=today.day)).replace(day=1)
+		start_of_this_month = today.replace(day=1)
+		last_day_of_prior_month = start_of_this_month - timedelta(days=1)
+
+		for loan in loans:
+			user_id         = loan['user_id']
+			rate            = loan['rate']
+			budget_category = loan['budget_category']
+
+			logger.info(f"Processing loan for user {self.splitwise_user_id_to_name(user_id)} ({user_id}), with rate of {rate}")
+
+			friend = next(f for f in self.my_friends if f.getId() == user_id)
+
+			expenses = list(filter(lambda e: not e.getDeletedAt(), self.splitwise.getExpenses(
+				friend_id    = user_id,
+				dated_after  = start_of_prior_month.isoformat(),
+				dated_before = start_of_this_month.isoformat())))
+
+			# New charges to other user
+			expenses_i_paid_for = list(filter(lambda e: float(next(u for u in e.getUsers() if u.getId() == self.my_user_id).getPaidShare()) > 0 and not "LOANSTART" in e.getDescription(), expenses))
+			new_charges = sum(float(next(eu.getOwedShare() for eu in e.getUsers() if eu.getId() == user_id)) for e in expenses_i_paid_for)
+
+			if not any("Personal Loan Interest" in e.getDescription() or "LOANSTART" in e.getDescription() for e in expenses):
+				current_total = sum(float(b.getAmount()) for b in friend.getBalances())
+
+				balance_to_accrue = current_total - new_charges
+
+				if balance_to_accrue > 0:
+					interest = balance_to_accrue * (rate / 12)
+
+					expense = Expense()
+					expense.setCost(interest)
+					expense.setDescription("Personal Loan Interest")
+					expense.setDate(last_day_of_prior_month.isoformat())
+
+					me = ExpenseUser()
+					me.setId(self.my_user_id)
+					me.setPaidShare(interest)
+					me.setOwedShare('0.00')
+
+					other = ExpenseUser()
+					other.setId(user_id)
+					other.setPaidShare('0.00')
+					other.setOwedShare(interest)
+
+					users = []
+					users.append(me)
+					users.append(other)
+
+					expense.setUsers(users)
+
+					logger.info(f"Creating interest expense on Splitwise of ${interest} to {self.splitwise_user_id_to_name(user_id)} ({user_id}) on date {last_day_of_prior_month.isoformat()}")
+
+					expense, errors = self.splitwise.createExpense(expense)
+
+					if errors:
+						logger.error(f"Error while creating interest expense: {errors}")
+					else:
+						logger.info(f"Interest expense created")
+
+			# Money coming to me
+			expenses_they_paid_for = list(filter(lambda e: float(next(u for u in e.getUsers() if u.getId() == user_id).getPaidShare()) > 0, expenses))
+			new_payments = sum(float(next(eu.getOwedShare() for eu in e.getUsers() if eu.getId() == self.my_user_id)) for e in expenses_they_paid_for)
+
+			if new_charges - new_payments < 0:
+				logger.info(f"Creating loan payment transaction on Monarch of ${-1 * (new_charges - new_payments)} in category \"{budget_category}\" for month {last_day_of_prior_month.isoformat()}")
+
+				self.budgeting_app.add_transaction(
+					f"Personal Loan Payment from {self.splitwise_user_id_to_name(user_id)}",
+					-1 * (new_charges - new_payments),
+					budget_category,
+					today,
+					f"LOANPAYMENT:{last_day_of_prior_month.isoformat()}",
+					notes=f"New Charges: {new_charges}\nNew Payments: {new_payments}")
