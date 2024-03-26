@@ -99,9 +99,9 @@ class MonarchMoneyHelper:
             date.strftime("%Y-%m-%d"),
             self.automated_account_id,
             float(price),
-            f"{desc} | {dedupe}",
+            desc,
             self.category_map[category],
-            notes))
+            dedupe if len(notes.trim()) == 0 else f"{notes}\n\nDEDUPE: {dedupe}"))
 
         return True
 
