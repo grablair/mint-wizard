@@ -184,6 +184,18 @@ class MonarchMoneyHelper:
             for holding in holdings['portfolio']['aggregateHoldings']['edges']:
                 cost_basis += holding['node']['basis']
 
+        if "Roth Contribution" in self.category_map:
+            # Fetch all roth contributions
+            roth_contributions = asyncio.run(self.mm.get_transactions(category_ids = [self.category_map["Roth Contribution"]]))
+
+            extra_params["Roth Contributions"] = sum([abs(txn["amount"]) for txn in roth_contributions["allTransactions"]["results"]])
+
+        if "Roth Conversion" in self.category_map:
+            # Fetch all roth conversions
+            roth_conversions = asyncio.run(self.mm.get_transactions(category_ids = [self.category_map["Roth Conversion"]]))
+
+            extra_params["Roth Conversions"] = sum([abs(txn["amount"]) for txn in roth_conversions["allTransactions"]["results"]])
+
         extra_params['Taxable Cost Basis'] = cost_basis
 
         # send the results to the given webhook
