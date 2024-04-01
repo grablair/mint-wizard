@@ -171,9 +171,8 @@ class SplitwiseHelper:
 
 		for rule in rules:
 			user_id = rule['user_id']
-			txns = list(filter(lambda txn: "LOANPAYMENT" not in txn['merchant']['name'],
+			txns = list(filter(lambda txn: all([search not in txn['merchant']['name'] and search not in str(txn['notes']) for search in ["LOANPAYMENT", "LOANINTERESTPAYMENT"]]),
 				self.budgeting_app.search_transactions(search=rule['search_string'], limit=5)))
-
 
 			for txn in txns:
 				expenses = list(filter(lambda e: not e.getDeletedAt(), self.splitwise.getExpenses(
