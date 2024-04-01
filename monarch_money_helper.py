@@ -101,7 +101,7 @@ class MonarchMoneyHelper:
             float(price),
             desc,
             self.category_map[category],
-            dedupe if len(notes.strip()) == 0 else f"{notes}\n\nDEDUPE: {dedupe}"))
+            dedupe if (notes == None or len(str(notes).strip()) == 0) else f"{notes}\n\nDEDUPE: {dedupe}"))
 
         return True
 
