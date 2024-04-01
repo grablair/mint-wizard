@@ -279,7 +279,7 @@ class SplitwiseHelper:
 			new_payments = sum(float(next(eu.getOwedShare() for eu in e.getUsers() if eu.getId() == self.my_user_id)) for e in expenses_they_paid_for)
 
 			if new_payments > 0 and interest > 0:
-				logger.info(f"Creating loan interest paid transaction on Monarch of ${-1 * min(interest, new_payments)} in category \"Interest\" for month {last_day_of_prior_month.isoformat()}")
+				logger.info(f"Creating loan interest paid transaction on Monarch of ${min(interest, new_payments)} in category \"Interest\" for month {last_day_of_prior_month.isoformat()}")
 
 				self.budgeting_app.add_transaction(
 					f"Personal Loan Interest Paid from {self.splitwise_user_id_to_name(user_id)}",
