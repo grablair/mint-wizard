@@ -238,14 +238,13 @@ class SplitwiseHelper:
 			expenses_i_paid_for = list(filter(lambda e: float(next(u for u in e.getUsers() if u.getId() == self.my_user_id).getPaidShare()) > 0 and not "LOANSTART" in e.getDescription(), expenses))
 			new_charges = sum(float(next(eu.getOwedShare() for eu in e.getUsers() if eu.getId() == user_id)) for e in expenses_i_paid_for)
 
+			# Interest to charge
+			current_total = sum(float(b.getAmount()) for b in friend.getBalances())
+			balance_to_accrue = current_total - new_charges
+			interest = max(0, balance_to_accrue * (rate / 12))
+
 			if not any("Personal Loan Interest" in e.getDescription() or "LOANSTART" in e.getDescription() for e in expenses):
-				current_total = sum(float(b.getAmount()) for b in friend.getBalances())
-
-				balance_to_accrue = current_total - new_charges
-
-				if balance_to_accrue > 0:
-					interest = balance_to_accrue * (rate / 12)
-
+				if interest > 0:
 					expense = Expense()
 					expense.setCost(interest)
 					expense.setDescription("Personal Loan Interest")
@@ -280,13 +279,24 @@ class SplitwiseHelper:
 			expenses_they_paid_for = list(filter(lambda e: float(next(u for u in e.getUsers() if u.getId() == user_id).getPaidShare()) > 0, expenses))
 			new_payments = sum(float(next(eu.getOwedShare() for eu in e.getUsers() if eu.getId() == self.my_user_id)) for e in expenses_they_paid_for)
 
+			if new_payments > 0 and interest > 0:
+				logger.info(f"Creating loan interest paid transaction on Monarch of ${-1 * min(interest, new_payments)} in category \"Interest\" for month {last_day_of_prior_month.isoformat()}")
+
+				self.budgeting_app.add_transaction(
+					f"Personal Loan Interest Paid from {self.splitwise_user_id_to_name(user_id)}",
+					min(interest, new_payments),
+					"Interest",
+					today,
+					f"LOANINTERESTPAYMENT:{last_day_of_prior_month.isoformat()}",
+					notes=f"New Charges: {new_charges}\nNew Payments: {new_payments}\nInterest: {interest}")
+
 			if new_charges - new_payments < 0:
 				logger.info(f"Creating loan payment transaction on Monarch of ${-1 * (new_charges - new_payments)} in category \"{budget_category}\" for month {last_day_of_prior_month.isoformat()}")
 
 				self.budgeting_app.add_transaction(
-					f"Personal Loan Payment from {self.splitwise_user_id_to_name(user_id)}",
+					f"Personal Loan Principal Payment from {self.splitwise_user_id_to_name(user_id)}",
 					-1 * (new_charges - new_payments),
 					budget_category,
 					today,
 					f"LOANPAYMENT:{last_day_of_prior_month.isoformat()}",
-					notes=f"New Charges: {new_charges}\nNew Payments: {new_payments}")
+					notes=f"New Charges: {new_charges}\nNew Payments: {new_payments}\nInterest: {interest}")
