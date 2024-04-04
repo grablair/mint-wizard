@@ -9,6 +9,7 @@ from requests.models import PreparedRequest
 from decimal import Decimal
 from db import get_next_occurrence_for_txn
 from monarchmoney import MonarchMoney, RequireMFAException
+from datetime import datetime, timedelta, date
 
 logger = logging.getLogger(__name__)
 logging.getLogger('gql.transport.aiohttp').setLevel(logging.WARN)
@@ -108,6 +109,9 @@ class MonarchMoneyHelper:
     def search_transactions(self, **kwargs):
         return asyncio.run(self.mm.get_transactions(**kwargs))['allTransactions']['results']
 
+    def get_budgets(self, **kwargs):
+        return asyncio.run(self.mm.get_budgets(**kwargs))['budgetData']['monthlyAmountsByCategory']
+
     def recategorize_txn(self, txn, category, description=False, set_as_autoprocessed=True):
         raise NotImplementedError
 
@@ -203,3 +207,80 @@ class MonarchMoneyHelper:
         req.prepare_url(webhook, extra_params)
 
         requests.get(req.url)
+
+    def handle_auto_splits(self, auto_splits):
+        if auto_splits is None or len(auto_splits) == 0:
+            return
+
+        logger.info("Handling auto-splits")
+
+        today = date.today()
+        start_of_last_month = (today - timedelta(days=today.day)).replace(day=1)
+        end_of_last_month = today - timedelta(days=today.day)
+
+        self.handle_auto_splits_for_dates(auto_splits, start_of_last_month, end_of_last_month)
+
+        start_of_this_month = today.replace(day=1)
+        next_month_sometime = today.replace(day=28) + timedelta(days=4)
+        end_of_this_month = next_month_sometime - timedelta(days=next_month_sometime.day)
+
+        self.handle_auto_splits_for_dates(auto_splits, start_of_this_month, end_of_this_month)
+
+    def handle_auto_splits_for_dates(self, auto_splits, start_date, end_date):
+        budgets = self.get_budgets(
+            start_date = start_date.strftime("%Y-%m-%d"),
+            end_date = end_date.strftime("%Y-%m-%d"))
+
+        for auto_split in auto_splits:
+            txns = self.search_transactions(
+                search = auto_split['description'],
+                start_date = start_date.strftime("%Y-%m-%d"),
+                end_date = end_date.strftime("%Y-%m-%d"),
+                is_split = False)
+
+            def handle_txn_in_auto_split(txn):
+                for condition in auto_split['conditions']:
+                    match condition['rule']:
+                        case "greaterThan"          if abs(txn['amount']) <= abs(condition['amount']):
+                            return
+                        case "greaterThanOrEqualTo" if abs(txn['amount']) <  abs(condition['amount']):
+                            return
+                        case "lessThan"             if abs(txn['amount']) >= abs(condition['amount']):
+                            return
+                        case "lessThanOrEqualTo"    if abs(txn['amount']) >  abs(condition['amount']):
+                            return
+                        case "equals"               if abs(txn['amount']) != abs(condition['amount']):
+                            return
+
+                logger.info(f"Handling auto-split {auto_split}")
+
+                credit_debit_modifier = -1 if txn['amount'] < 0 else 1
+                splits = []
+                for split in auto_split['splits']:
+                    if 'budget_directed' in split and split['budget_directed']:
+                        budget = next(budget for budget in budgets if budget['category']['id'] == self.category_map[split['category']])
+                        amount = abs(budget['monthlyAmounts'][0]['plannedCashFlowAmount'])
+                    else:
+                        amount = abs(split['amount'])
+
+                    splits.append({
+                            "merchantName": split['description'],
+                            "amount": credit_debit_modifier * amount,
+                            "categoryId": self.category_map[split['category']]
+                        })
+
+                remainder = txn['amount'] - sum([split['amount'] for split in splits])
+                splits.append({
+                        "merchantName": txn['merchant']['name'],
+                        "amount": remainder,
+                        "categoryId": txn['category']['id']
+                    })
+
+                logger.info(f"Splitting ${txn['amount']} transaction for {txn['merchant']['name']} into sections {splits}")
+
+                res = asyncio.run(self.mm.update_transaction_splits(txn['id'], splits))
+
+                logger.info(f"Split successful: {res}")
+
+            for txn in txns:
+                handle_txn_in_auto_split(txn)

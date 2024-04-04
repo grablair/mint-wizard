@@ -104,6 +104,10 @@ def run_auto_processor(args):
 			# Export account balances to the given webhook
 			mm.export_account_balances(config["account_balance_export_webhook"])
 
+		if "auto_splits" in config:
+			# Process auto-splits
+			mm.handle_auto_splits(config["auto_splits"])
+
 		logger.info("Splitwise-Budgeting auto-processing via Monarch Money complete!")
 	else:
 		if (args.remote is None) != (args.remote_url is None):
