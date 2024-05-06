@@ -43,7 +43,7 @@ class MonarchMoneyHelper:
                     sys.exit(1)
                 else:
                     logger.error(f"Multiple accounts with name '{category['name']}' exist. This may result in unintended behavior.")
-            
+
             self.account_map[account['displayName']] = account['id']
 
         logger.debug(f"Accounts fetched: {self.account_map}")
@@ -64,7 +64,7 @@ class MonarchMoneyHelper:
         for category in result['categories']:
             if category['name'] in self.category_map:
                 logger.error(f"Multiple categories with name '{category['name']}' exist. This may result in unintended behavior.")
-            
+
             self.category_map[category['name']] = category['id']
 
         logger.debug(f"Categories fetched: {self.category_map}")
@@ -298,9 +298,13 @@ class MonarchMoneyHelper:
         today = date.today()
         yesterday = today - timedelta(days=1)
 
+        logger.info("Syncing account growth between partner accounts...")
+
         for partner_account_mapping in partner_account_mapping:
             child_account = partner_account_mapping['child_account']
             parent_account = partner_account_mapping['parent_account']
+
+            logger.info(f"Syncing the balance of \"{child_account}\" to the tracked account \"{parent_account}\"")
             parent_account_history = asyncio.run(self.mm.get_account_history(self.account_map[parent_account]))
 
             yesterday_balance = next(snapshot['signedBalance'] for snapshot in parent_account_history if snapshot['date'] == yesterday.strftime("%Y-%m-%d"))
@@ -309,6 +313,8 @@ class MonarchMoneyHelper:
             difference = today_balance - yesterday_balance
 
             if difference != 0:
+                logger.info(f"Difference found between yesterday and today: ${difference:.2f}")
+
                 child_account_history = asyncio.run(self.mm.get_account_history(self.account_map[child_account]))
                 child_balance_yesterday = next(snapshot['signedBalance'] for snapshot in child_account_history if snapshot['date'] == yesterday.strftime("%Y-%m-%d"))
 
@@ -321,5 +327,7 @@ class MonarchMoneyHelper:
                 ))['allTransactions']['results']
 
                 new_child_account_balance += sum([txn['amount'] for txn in child_account_txns_today])
+
+                logger.info(f"New child account balance: {new_child_account_balance:.2f}")
 
                 asyncio.run(self.mm.update_account(child_account, account_balance=new_child_account_balance))
