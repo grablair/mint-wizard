@@ -294,7 +294,7 @@ class MonarchMoneyHelper:
             for txn in txns:
                 handle_txn_in_auto_split(txn)
 
-    def update_partner_account_balances(self, partner_account_mapping):
+    def sync_account_growth(self, partner_account_mapping):
         today = date.today()
         yesterday = today - timedelta(days=1)
 
