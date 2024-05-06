@@ -328,8 +328,8 @@ class MonarchMoneyHelper:
 
                 new_child_account_balance += sum([txn['amount'] for txn in child_account_txns_today])
 
-                logger.info(f"New child account balance: {new_child_account_balance:.2f}")
+                logger.info(f"New child account balance: ${new_child_account_balance:.2f}")
 
-                asyncio.run(self.mm.update_account(child_account, account_balance=new_child_account_balance))
+                asyncio.run(self.mm.update_account(str(self.account_map[child_account]), account_balance=new_child_account_balance))
             else:
                 logger.info(f"No change in tracked account balance found")
