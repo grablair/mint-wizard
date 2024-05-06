@@ -42,7 +42,7 @@ class MonarchMoneyHelper:
                     logger.error("More than one account exists with the name 'Automated Transactions'. Please rename extra accounts with that name.")
                     sys.exit(1)
                 else:
-                    logger.error(f"Multiple accounts with name '{account['name']}' exist. This may result in unintended behavior.")
+                    logger.error(f"Multiple accounts with name '{account['displayName']}' exist. This may result in unintended behavior.")
 
             self.account_map[account['displayName']] = account['id']
 
