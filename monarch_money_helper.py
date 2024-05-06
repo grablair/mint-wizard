@@ -55,7 +55,7 @@ class MonarchMoneyHelper:
         else:
             self.automated_account_id = self.account_map['Automated Transactions']
 
-        logger.debug(f"'Automated Transactions' account found: {filtered_accounts[0]}")
+        logger.debug(f"'Automated Transactions' account found: {self.automated_account_id}")
 
         # Set up the category map
         logger.info("Fetching categories and setting up category -> id map...")
