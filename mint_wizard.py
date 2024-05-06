@@ -108,6 +108,10 @@ def run_auto_processor(args):
 			# Process auto-splits
 			mm.handle_auto_splits(config["auto_splits"])
 
+		if "account_growth_partners" in config:
+			# Sync account growth between partner accounts
+			mm.sync_account_growth(config["account_growth_partners"])
+
 		logger.info("Splitwise-Budgeting auto-processing via Monarch Money complete!")
 	else:
 		if (args.remote is None) != (args.remote_url is None):

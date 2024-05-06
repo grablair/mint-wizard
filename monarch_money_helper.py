@@ -32,21 +32,30 @@ class MonarchMoneyHelper:
             ))
 
         # Set up "Automated Transactions" account, if not present
-        logger.info("Fetching 'Automated Transactions' dummy account...")
+        logger.info("Fetching accounts...")
         result = asyncio.run(self.mm.get_accounts())
-        filtered_accounts = list(filter(lambda x: x['displayName'] == "Automated Transactions", result['accounts']))
 
-        if len(filtered_accounts) == 0:
+        self.account_map = {}
+        for account in result['accounts']:
+            if account['displayName'] in self.account_map:
+                if account['displayName'] is "Automated Transactions":
+                    logger.error("More than one account exists with the name 'Automated Transactions'. Please rename extra accounts with that name.")
+                    sys.exit(1)
+                else:
+                    logger.error(f"Multiple accounts with name '{category['name']}' exist. This may result in unintended behavior.")
+            
+            self.account_map[account['displayName']] = account['id']
+
+        logger.debug(f"Accounts fetched: {self.account_map}")
+
+        if "Automated Transactions" not in self.account_map:
             # TODO: set up account automatically
             logger.error("No 'Automated Transactions' dummy account exists. Please create one.")
             sys.exit(1)
-        elif len(filtered_accounts) > 1:
-            logger.error("More than one account exists with the name 'Automated Transactions'. Please rename extra accounts with that name.")
-            sys.exit(1)
         else:
-            self.automated_account_id = filtered_accounts[0]['id']
+            self.automated_account_id = self.account_map['Automated Transactions']
 
-        logger.debug(f"'Automated Transactions' account fetched: {filtered_accounts[0]}")
+        logger.debug(f"'Automated Transactions' account found: {filtered_accounts[0]}")
 
         # Set up the category map
         logger.info("Fetching categories and setting up category -> id map...")
@@ -284,3 +293,33 @@ class MonarchMoneyHelper:
 
             for txn in txns:
                 handle_txn_in_auto_split(txn)
+
+    def update_partner_account_balances(self, partner_account_mapping):
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        for partner_account_mapping in partner_account_mapping:
+            child_account = partner_account_mapping['child_account']
+            parent_account = partner_account_mapping['parent_account']
+            parent_account_history = asyncio.run(self.mm.get_account_history(self.account_map[parent_account]))
+
+            yesterday_balance = next(snapshot['signedBalance'] for snapshot in parent_account_history if snapshot['date'] == yesterday.strftime("%Y-%m-%d"))
+            today_balance = next(snapshot['signedBalance'] for snapshot in parent_account_history if snapshot['date'] == today.strftime("%Y-%m-%d"))
+
+            difference = today_balance - yesterday_balance
+
+            if difference != 0:
+                child_account_history = asyncio.run(self.mm.get_account_history(self.account_map[child_account]))
+                child_balance_yesterday = next(snapshot['signedBalance'] for snapshot in child_account_history if snapshot['date'] == yesterday.strftime("%Y-%m-%d"))
+
+                new_child_account_balance = child_balance_yesterday * (difference / yesterday_balance)
+
+                child_account_txns_today = asyncio.run(self.mm.get_transactions(
+                    account_ids=[str(self.account_map[child_account])],
+                    start_date=today.strftime("%Y-%m-%d"),
+                    end_date=today.strftime("%Y-%m-%d")
+                ))['allTransactions']['results']
+
+                new_child_account_balance += sum([txn['amount'] for txn in child_account_txns_today])
+
+                asyncio.run(self.mm.update_account(child_account, account_balance=new_child_account_balance))

@@ -174,6 +174,8 @@ class SplitwiseHelper:
 			txns = list(filter(lambda txn: all([search not in txn['merchant']['name'] and search not in str(txn['notes']) for search in ["LOANPAYMENT", "LOANINTERESTPAYMENT"]]),
 				self.budgeting_app.search_transactions(search=rule['search_string'], limit=5)))
 
+			logger.info(f"Processing following payments: {txns}")
+
 			for txn in txns:
 				expenses = list(filter(lambda e: not e.getDeletedAt(), self.splitwise.getExpenses(
 					friend_id    = user_id,
