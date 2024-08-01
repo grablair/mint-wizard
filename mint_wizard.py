@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from pytimeparse2 import parse as timeparse
 
 from splitwise_helper import SplitwiseHelper
-from mint_helper import MintHelper
 from monarch_money_helper import MonarchMoneyHelper
 from db import Db
 import util
