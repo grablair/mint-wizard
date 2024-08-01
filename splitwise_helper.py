@@ -245,6 +245,10 @@ class SplitwiseHelper:
 			balance_to_accrue = current_total - new_charges
 			interest = max(0, balance_to_accrue * (rate / 12))
 
+			logger.info(f"    Current total: ${current_total}")
+			logger.info(f"    Balance to accrue: ${current_total}")
+			logger.info(f"    Interest: ${current_total}")
+
 			if not any("Personal Loan Interest" in e.getDescription() or "LOANSTART" in e.getDescription() for e in expenses):
 				if interest > 0:
 					expense = Expense()
