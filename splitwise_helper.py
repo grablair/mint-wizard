@@ -225,7 +225,7 @@ class SplitwiseHelper:
 			user_id               = loan['user_id']
 			rate                  = loan['rate']
 			budget_category       = loan['budget_category']
-			interest_free_balance = loan['interest_free_balance'] or 0
+			interest_free_balance = loan.get('interest_free_balance', 0)
 
 			logger.info(f"Processing loan for user {self.splitwise_user_id_to_name(user_id)} ({user_id}), with rate of {rate}")
 
