@@ -6,4 +6,4 @@ selenium==4.10.0
 splitwise==3.0.0
 SQLAlchemy==2.0.15
 monarchmoney==0.1.13
-requests==2.31.0
+requests==2.32.2
