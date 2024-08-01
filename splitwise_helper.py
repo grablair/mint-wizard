@@ -222,9 +222,10 @@ class SplitwiseHelper:
 		last_day_of_prior_month = start_of_this_month - timedelta(days=1)
 
 		for loan in loans:
-			user_id         = loan['user_id']
-			rate            = loan['rate']
-			budget_category = loan['budget_category']
+			user_id               = loan['user_id']
+			rate                  = loan['rate']
+			budget_category       = loan['budget_category']
+			interest_free_balance = loan['interest_free_balance'] or 0
 
 			logger.info(f"Processing loan for user {self.splitwise_user_id_to_name(user_id)} ({user_id}), with rate of {rate}")
 
@@ -240,7 +241,7 @@ class SplitwiseHelper:
 			new_charges = sum(float(next(eu.getOwedShare() for eu in e.getUsers() if eu.getId() == user_id)) for e in expenses_i_paid_for)
 
 			# Interest to charge
-			current_total = sum(float(b.getAmount()) for b in friend.getBalances())
+			current_total = max(0, sum(float(b.getAmount()) for b in friend.getBalances()) - interest_free_balance)
 			balance_to_accrue = current_total - new_charges
 			interest = max(0, balance_to_accrue * (rate / 12))
 

@@ -318,6 +318,9 @@ class MonarchMoneyHelper:
                 child_account_history = asyncio.run(self.mm.get_account_history(self.account_map[child_account]))
                 child_balance_yesterday = next(snapshot['signedBalance'] for snapshot in child_account_history if snapshot['date'] == yesterday.strftime("%Y-%m-%d"))
 
+                if (yesterday_balance >= 0) != (child_balance_yesterday >= 0):
+                    logger.warn(f"The parent and child account balances are signed differently; results/logging may be misleading")
+
                 new_child_account_balance = child_balance_yesterday * (1 + (difference / yesterday_balance))
 
                 child_account_txns_today = asyncio.run(self.mm.get_transactions(
