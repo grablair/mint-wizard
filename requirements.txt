@@ -4,5 +4,5 @@ pytimeparse2==1.7.1
 recurrent==0.4.1
 splitwise==3.0.0
 SQLAlchemy==2.0.15
-monarchmoney==0.1.13
+monarchmoney==0.1.15
 requests==2.32.2
