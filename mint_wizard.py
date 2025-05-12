@@ -110,6 +110,9 @@ def run_auto_processor(args):
 		# Sync account growth between partner accounts
 		mm.sync_account_growth(config["account_growth_partners"])
 
+	if "budget_update_webhooks" in config:
+		mm.sync_budget_values_with_external_source(config["budget_update_webhooks"])
+
 	logger.info("Budgeting auto-processing via Monarch Money complete!")
 
 if __name__ == "__main__":

@@ -30,6 +30,7 @@ class MonarchMoneyHelper:
             asyncio.run(self.mm.multi_factor_authenticate(
                 creds['mm']['email'], creds['mm']['password'], pyotp.TOTP(creds['mm']['totp_secret']).now()
             ))
+            self.mm.save_session()
 
         # Set up "Automated Transactions" account, if not present
         logger.info("Fetching accounts...")
@@ -336,3 +337,34 @@ class MonarchMoneyHelper:
                 asyncio.run(self.mm.update_account(str(self.account_map[child_account]), account_balance=new_child_account_balance))
             else:
                 logger.info(f"No change in tracked account balance found")
+
+    def sync_budget_values_with_external_source(self, external_webhooks):
+        for webhook_info in external_webhooks:
+            description = webhook_info["description"]
+            webhook = webhook_info["webhook"]
+
+            logger.info(f"Syncing budget values with output of webhook: {description}")
+
+            r = requests.get(webhook)
+
+            if r.status_code == 200:
+                budget_updates = r.json()['data']
+
+                for budget_update in budget_updates:
+                    start_date = datetime.fromisoformat(budget_update['start_date'])
+
+                    if budget_update['category_name'] not in self.category_map:
+                        logger.error(f"Invalid category found: {budget_update['category_name']}")
+
+                    logger.info(f"Setting budget for date '{start_date.strftime("%Y-%m-%d")}' and category '{self.category_map[budget_update['category_name']]}'")
+                    update_r = asyncio.run(self.mm.set_udget_amount(
+                        amount = budget_update['amount'],
+                        category_id = self.category_map[budget_update['category_name']],
+                        start_date = start_date.strftime("%Y-%m-%d")))
+
+                    if update_r == 200:
+                        logger.info("Successfully set budget")
+
+
+
+
