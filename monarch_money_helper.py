@@ -31,6 +31,14 @@ class MonarchMoneyHelper:
                 creds['mm']['email'], creds['mm']['password'], pyotp.TOTP(creds['mm']['totp_secret']).now()
             ))
             self.mm.save_session()
+        except Exception:
+            logger.warning(
+                "Failed to login with saved session. Logging in with new session."
+            )
+
+            del self.mm._headers["Authorization"]
+            asyncio.run(self.mm.login(creds['mm']['email'], creds['mm']['password'], mfa_secret_key = creds['mm']['totp_secret'], use_saved_session=False))
+            self.mm.save_session()
 
         # Set up "Automated Transactions" account, if not present
         logger.info("Fetching accounts...")
