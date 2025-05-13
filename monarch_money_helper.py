@@ -357,7 +357,7 @@ class MonarchMoneyHelper:
                         logger.error(f"Invalid category found: {budget_update['category_name']}")
 
                     logger.info(f"Setting budget for date '{start_date.strftime("%Y-%m-%d")}' and category '{self.category_map[budget_update['category_name']]}'")
-                    update_r = asyncio.run(self.mm.set_udget_amount(
+                    update_r = asyncio.run(self.mm.set_budget_amount(
                         amount = budget_update['amount'],
                         category_id = self.category_map[budget_update['category_name']],
                         start_date = start_date.strftime("%Y-%m-%d")))
