@@ -50,6 +50,7 @@ class MonarchMoneyHelper:
             )
 
             self.refresh_login()
+
             result = asyncio.run(self.mm.get_accounts())
 
             logger.warning("New session successful")
@@ -106,7 +107,7 @@ class MonarchMoneyHelper:
 
         logger.debug(f"AUTOPROCESSED tag fetched: {filtered_tags[0]}")
 
-    def refresh_login():
+    def refresh_login(self):
         del self.mm._headers["Authorization"]
         asyncio.run(self.mm.login(self.creds['mm']['email'], self.creds['mm']['password'], mfa_secret_key = self.creds['mm']['totp_secret'], use_saved_session=False))
         self.mm.save_session()
