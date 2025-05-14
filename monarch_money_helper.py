@@ -36,13 +36,24 @@ class MonarchMoneyHelper:
                 "Failed to login with saved session. Logging in with new session."
             )
 
-            del self.mm._headers["Authorization"]
-            asyncio.run(self.mm.login(creds['mm']['email'], creds['mm']['password'], mfa_secret_key = creds['mm']['totp_secret'], use_saved_session=False))
-            self.mm.save_session()
+            self.refresh_login()
+
+            logger.warning("New session successful")
 
         # Set up "Automated Transactions" account, if not present
         logger.info("Fetching accounts...")
-        result = asyncio.run(self.mm.get_accounts())
+        try:
+            result = asyncio.run(self.mm.get_accounts())
+        except Exception:
+            logger.warning(
+                "Failed to fetch accounts... Trying to log in with new session."
+            )
+
+            self.refresh_login()
+            result = asyncio.run(self.mm.get_accounts())
+
+            logger.warning("New session successful")
+
 
         self.account_map = {}
         for account in result['accounts']:
@@ -94,6 +105,11 @@ class MonarchMoneyHelper:
             self.autoprocessed_tag_id = filtered_tags[0]['id']
 
         logger.debug(f"AUTOPROCESSED tag fetched: {filtered_tags[0]}")
+
+    def refresh_login():
+        del self.mm._headers["Authorization"]
+        asyncio.run(self.mm.login(self.creds['mm']['email'], self.creds['mm']['password'], mfa_secret_key = self.creds['mm']['totp_secret'], use_saved_session=False))
+        self.mm.save_session()
 
     # returns True if a transaction either was created or already existed
     def add_transaction(self, desc, price, category, date, dedupe, notes=""):
