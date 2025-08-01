@@ -221,7 +221,7 @@ class MonarchMoneyHelper:
         for brokerage in brokerages:
             holdings = asyncio.run(self.mm.get_account_holdings(brokerage['id']))
             for holding in holdings['portfolio']['aggregateHoldings']['edges']:
-                if holding['node']['security']['type'] != "Derivative":
+                if holding['node']['security']['type'] != "derivative":
                     cost_basis += holding['node']['basis']
 
         if "Roth Contribution" in self.category_map:
