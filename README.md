@@ -181,6 +181,7 @@ for the current user.
 	If they simply used the global `C` flag, Alice would have the $50 credit card charge,
 	_another_ $50 automated charge would be added by the script, and then a $30 credit,
 	resulting in $70 being tracked in Mint.
+2.  The `S` modifier skips this transaction for the current user.
 
 ## Recurring Transactions
 
