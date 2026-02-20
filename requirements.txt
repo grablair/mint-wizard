@@ -4,5 +4,5 @@ pytimeparse2==1.7.1
 recurrent==0.4.1
 splitwise==3.0.0
 SQLAlchemy==2.0.44
-monarchmoney-grablair==0.1.17
+monarchmoney-grablair==0.1.18
 requests==2.32.4
